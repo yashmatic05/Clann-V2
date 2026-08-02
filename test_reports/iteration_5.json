@@ -1,0 +1,33 @@
+{
+  "summary": "Iteration-5 RETEST after main-agent's fixes to /app/frontend/src/pages/AdminPanel.jsx (TEMPLATE_HEADERS + truthy + splitList + normalizeRow declared at module scope, lines 24-69) and /app/frontend/src/pages/Home.jsx (setEvents filters out is_government=true rows, line 72). All 4 targeted checks PASS. Bulk import works end-to-end: template download triggers .xlsx (17,469 bytes, no ReferenceError, no CRA overlay); uploading a 4-row xlsx (2 valid + 2 missing required fields) yields toast '2 events imported' + 'bulk-stats' = '2 imported · 2 skipped of 4 rows' and both new rows appear in events-table AND on GET /api/events. Government dedup works: seeded gov event only appears in [data-testid=government-section] / [data-testid=government-grid], NOT in [data-testid=event-grid]; results-count matches non-gov count. Regression: logo <img> on /auth (True, 0 'C' badges), auth-gate redirect from home event card to /auth (logged-out) still works, government-section renders when >=1 gov event exists. Backend pytest: 35/35 passed (~3.5s). All test events cleaned up.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_clann_iteration2.py",
+    "/app/backend/tests/test_clann_iteration4.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results_iter5.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminPanel.jsx line 88 useEffect(..., [navigate]) still misses loadData in deps (ESLint warning). Non-critical — current behaviour is correct because navigate is stable and loadData is invoked once on mount.",
+    "AdminPanel.jsx processFile() posts events sequentially inside a for-of loop. Fine for small sheets, but for 100+ rows this will be slow — consider Promise.allSettled batching if bulk sheets get large.",
+    "AdminPanel.jsx normalizeRow does NOT validate event_date format — if a user uploads a spreadsheet with Excel date-serial numbers rather than YYYY-MM-DD strings, XLSX might return them as Date objects or floats. Currently they'd be coerced via String() and likely fail the /events POST. Consider XLSX cellDates:true + a date coercion path in normalizeRow. Not a blocker but a UX papercut.",
+    "Home.jsx filters is_government client-side on the merged list from GET /events (no query filter). For very large event datasets you'd want the API to accept is_government=false server-side (server.py already supports the param, so passing params:{is_government:false} would be slightly more efficient). Not a bug — just an optimisation."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (35/35)", "frontend": "100% (targeted flows + regression all pass)"},
+  "test_credentials": "Admin: admin@clann.com / Clann@2026 (verified). Admin X-Admin-Token literal: clann-admin-secret-2026-super-secure.",
+  "seed_data_creation": "During test: uploaded 4 rows via bulk-file-input → 2 valid events created (TEST_Bulk_Event_One, TEST_Bulk_Event_Two) and 1 gov event (TEST_Gov_Digital_India_Program) seeded via admin API. All 3 events DELETEd via /api/events/{id} at end of run. GET /api/events now returns 3 events (original seed only) — DB clean.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration-4 blocking bugs (TEMPLATE_HEADERS + normalizeRow ReferenceErrors) are FIXED and verified end-to-end. Government dedup design nit is FIXED. Backend + frontend all green; no outstanding action items. If main agent adds more features, next agent should still run pytest /app/backend/tests/ -v (35 tests, ~3.5s) as regression, and re-verify the bulk-upload flow (template download + xlsx upload with mix of valid/invalid rows).",
+  "rca_of_the_issue": "Fix verification: TEMPLATE_HEADERS (array of 20 column names) and normalizeRow(row) helper are now declared at module scope in AdminPanel.jsx (lines 24-69), alongside truthy() and splitList() helpers. downloadTemplate() and processFile() can now access them without ReferenceError. Home.jsx line 72 setEvents(data.filter((e) => !e.is_government)) prevents gov events from appearing in the main event-grid. Both fixes verified by (a) template download producing a valid .xlsx, (b) xlsx upload creating 2 events + skipping 2 invalid rows, (c) seeded gov event NOT appearing in event-grid but only in government-grid."
+}

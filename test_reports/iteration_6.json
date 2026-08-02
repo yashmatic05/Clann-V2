@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration-6 (navbar & UI restructure) end-to-end verified. Backend: 50/50 pytest cases pass (15 new iter6 + 35 existing regression). /api/auth/me now returns FULL user document including phone/city/role/whatsapp_reminder_enabled — the reported profile-persistence bug is fixed. Frontend UI: navbar (logged-out = brand + Sign In/Sign Up only; logged-in = brand + bell + avatar only; NO logout in dropdown) verified; bottom tab bar has exactly 3 tabs (Home/Search/Calendar); hero banner has no Know More CTA and clicking a slide navigates to /event/:id without auth; Copy icon (not Share2) on cards + detail; Know More opens detail page for logged-out user, Register on detail redirects to /auth; WhatsApp bar shows green SVG glyph + 'Enable WhatsApp Reminders' bold heading + 'Never miss an update.' subtext; homepage filter row order = mode toggle (row 1) above category chips (row 2); profile page structure top-to-bottom = profile-card → profile-saved-section → feedback-section → profile-logout with phone '+91 9876543210' persisting; /search page renders with real-time filtering; footer logo has self-start + object-contain classes. Excel bulk-upload date fix verified: uploaded an xlsx with openpyxl-native datetime cells → 2 events imported with correct YYYY-MM-DD dates (2027-03-20 and 2026-11-05).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin events table", "issues": ["6 existing DB rows have Excel-serial-number event_dates (e.g., '46221', '46222', '46228' for 'Chor Bazaar Photowalk', 'Mehrauli Archaeological Park Sketch Session', 'Feathers and Rainclouds', 'Ruhani Ratein', 'Raghu Rai – An Unframed Portrait', 'Ghalib in Delhi'). These rows were bulk-uploaded BEFORE the toISODate fix and remain polluted. Current code is correct — this is stale data only. Main agent should either (a) delete these rows in a one-off script, or (b) re-upload the source xlsx now that the date parser is fixed. On the homepage these show as 'Registration closed' because parseDate() returns null for Number-like strings — user-visible but non-critical."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_clann_iteration6.py",
+    "/app/backend/tests/test_clann_iteration4.py",
+    "/app/backend/tests/test_clann_iteration2.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results_iter6.xml"
+  ],
+  "action_items": [
+    "OPTIONAL: Clean up 6 polluted event rows in Mongo whose event_date is an Excel serial number ('46221', '46222', '46228'). These are pre-existing data from before the iter6 toISODate fix; the new upload pipeline no longer produces them. Suggested one-liner: db.events.delete_many({event_date: {$regex: '^[0-9]+$'}}) or main agent can re-upload the source xlsx."
+  ],
+  "critical_code_review_comments": [
+    "EventDetail.jsx L138–139 shows raw event_date / registration_deadline strings ('2026-05-25'). Consider formatting to 'Mon 25 May 2026' for parity with the new EventCard displayDate treatment. Non-blocking.",
+    "Profile.jsx L24 useEffect calls checkAuth() but its dep-list eslint-disables — fine, but the call happens even when !user (only mount) which is a wasted request when the user was never authed. Minor.",
+    "AdminPanel.jsx toISODate() falls back to `new Date(s)` for arbitrary strings; if a locale-formatted string like '15/03/2026' comes in, JS Date will parse this as US-style MM/DD/YYYY in some engines and DD/MM/YYYY in others. Consider explicit format detection or a hard reject for ambiguous inputs. Not blocking iter6 acceptance since the openpyxl-native path works.",
+    "server.py process_session (L166–216): if the emergent oauth endpoint returns 200 but the payload is missing 'email' or 'session_token', KeyError will throw a 500 instead of a 401. Wrap in a try/except or use .get() with a raise HTTPException(401). Minor hardening.",
+    "Home.jsx uses a client-side .filter(e => !e.is_government) rather than passing is_government=false to the API. Non-blocking micro-optimisation (server already supports the param)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_clann_iteration6.py"
+  ],
+  "success_rate": {"backend": "100% (50/50 pytest passing, iter6 file: 15/15)", "frontend": "100% — all 12 targeted UI flows for iter6 pass"},
+  "test_credentials": "Admin: admin@clann.com / Clann@2026 (verified). X-Admin-Token literal: clann-admin-secret-2026-super-secure. For seeded-auth UI tests, insert into db.users + db.user_sessions and set cookie session_token (verified pattern works in browser context).",
+  "seed_data_creation": "Iter6 run: (a) seeded 1 UI test user (TEST_ui_a8f700@example.com, phone '+91 9876543210') + session — DELETED at end of run. (b) pytest fixture-scoped users prefixed with TEST_user_* — auto-deleted by conftest teardown. (c) bulk-uploaded 2 events via xlsx (TEST_iter6_excel_date_A/B) + the leftover 'Sample Workshop' template row — all 3 DELETEd. GET /api/events currently returns 9 events = 3 original seed + 6 legacy polluted rows described in action_items.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 11 Iteration-6 groups (A–K) plus the profile-persistence bug fix are verified end-to-end. If main agent adds more UI, re-run pytest /app/backend/tests/ (50 tests, ~4s) as regression. The Excel-serial-dated legacy events are the only outstanding data-quality nit — they will trip up any test that assumes chronologically sortable events on /api/events.",
+  "rca_of_the_issue": "Profile phone bug RCA: server.py `process_session` originally returned the OAuth-provided fields (email/name/picture/session_token) only, so on every re-login the frontend hydrated user with a stripped-down doc — phone/city/role were lost from the AuthContext until the user navigated to /profile which then called /auth/me. FIX: process_session now `await db.users.find_one({user_id})` after upsert and returns the full doc (server.py L214–216). /auth/me was already returning the full doc via get_current_user, so the second half of the fix was purely frontend hydration on session bootstrap. Verified: seeded a user with phone='+91 9876543210' city='Delhi' role='attendee', GET /api/auth/me now returns all fields (test_me_returns_phone_city_role in test_clann_iteration6.py) AND the /profile UI Row for phone displays '+91 9876543210' instead of '—' (screenshot captured)."
+}

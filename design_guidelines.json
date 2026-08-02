@@ -1,0 +1,187 @@
+{
+  "project_name": "Clann",
+  "theme": "dark",
+  "typography": {
+    "font_family": "Satoshi, sans-serif",
+    "font_import": "@import url('https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap');",
+    "scale": {
+      "h1_hero": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-none text-white",
+      "h2_section": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white",
+      "h3_card_title": "text-lg sm:text-xl font-bold tracking-tight text-white",
+      "body_large": "text-base sm:text-lg font-medium text-white",
+      "body_regular": "text-sm sm:text-base font-normal text-[#727272]",
+      "body_small": "text-xs sm:text-sm font-medium text-[#727272]",
+      "chips_tags": "text-xs font-bold tracking-[0.05em] uppercase text-[#BF72FF]"
+    },
+    "rules": [
+      "Use Satoshi exclusively for all text elements.",
+      "Headings > 32px MUST use tracking-tight or tracking-tighter.",
+      "Body text should use the Grey Text (#727272) for secondary information, reserving pure White (#FFFFFF) and Clan White (#FFFBE9) for high emphasis.",
+      "Tags and chips should be uppercase with wide letter-spacing to enhance readability and premium feel."
+    ]
+  },
+  "colors": {
+    "background": {
+      "default": "#0D0D0D",
+      "card": "#18002C",
+      "chip_unselected": "#280049"
+    },
+    "primary": {
+      "default": "#F84E00",
+      "hover": "#D14200",
+      "clicked": "#C63E00"
+    },
+    "secondary": {
+      "purple_primary": "#280049",
+      "purple_accent": "#46176D",
+      "purple_text": "#BF72FF"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#727272",
+      "highlight": "#FFFBE9"
+    },
+    "state": {
+      "disabled": "#2C2C2C"
+    },
+    "rules": [
+      "Do NOT use pure #000000. The darkest background is #0D0D0D.",
+      "Primary Orange (#F84E00) is reserved STRICTLY for Call-To-Action buttons (e.g., Register, Sign Up) and highly interactive, high-value indicators.",
+      "Use Purple (#280049 / #46176D) for structural depth, like card backgrounds, chips, or section dividers.",
+      "Never use full-screen gradients. Keep the background deep and matte."
+    ]
+  },
+  "visual_enhancers": {
+    "corners": {
+      "cards": "rounded-xl",
+      "chips": "rounded-lg",
+      "buttons": "rounded-full"
+    },
+    "shadows": {
+      "card_hover": "shadow-[0_8px_30px_rgba(70,23,109,0.4)]",
+      "button_glow": "shadow-[0_0_15px_rgba(248,78,0,0.5)]"
+    },
+    "borders": {
+      "card": "border border-[#46176D]/30",
+      "chip": "border border-[#46176D]/50"
+    },
+    "surfaces": {
+      "glass_header": "bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-[#280049]",
+      "glass_tab_bar": "bg-[#18002C]/90 backdrop-blur-lg border-t border-[#46176D]/50"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] text-white rounded-full px-6 py-3 font-bold transition-all duration-200",
+      "secondary": "bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] rounded-full px-6 py-3 font-bold transition-all duration-200",
+      "icon_button": "bg-[#280049] hover:bg-[#46176D] text-white rounded-full p-2 transition-all duration-200"
+    },
+    "chips": {
+      "selected": "bg-[#46176D] text-white border-[#BF72FF] border rounded-lg px-4 py-2 text-xs font-bold transition-all",
+      "default": "bg-[#280049] text-[#BF72FF] border border-transparent hover:border-[#46176D] rounded-lg px-4 py-2 text-xs font-bold transition-all"
+    },
+    "cards": {
+      "event_card": "bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 hover:border-[#46176D] transition-all duration-300 flex flex-col h-full group"
+    },
+    "form_elements": {
+      "input": "bg-[#2C2C2C] border border-transparent focus:border-[#F84E00] rounded-lg px-4 py-3 text-white placeholder-[#727272] w-full transition-all outline-none"
+    }
+  },
+  "grids_and_layouts": {
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+    "event_grid": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6",
+    "spacing": {
+      "section": "py-12 md:py-20",
+      "component_gap": "gap-4 md:gap-6",
+      "card_padding": "p-4 md:p-5"
+    },
+    "patterns": {
+      "hero_banner": "A top-level carousel layout for 2-3 featured events. Needs aspect ratio constraints (e.g. 16:9 on desktop, 4:3 on mobile) with a dark gradient overlay (bg-gradient-to-t from-[#0D0D0D] via-[#0D0D0D]/50 to-transparent) to ensure text legibility.",
+      "navigation": "Sticky top nav on desktop with glassmorphism. On mobile, top nav holds Logo, Search, Location. Bottom Tab Bar for Home, Search, Saved, Profile. Hide bottom tab bar on desktop."
+    }
+  },
+  "motion": {
+    "hover_states": "Cards should slightly lift (-translate-y-1) and gain the card_hover shadow. Images inside cards should slowly scale up (scale-105) on hover.",
+    "page_transitions": "Fade-in for main content sections.",
+    "carousels": "Smooth momentum scrolling for horizontal chip lists and the hero banner.",
+    "rules": [
+      "Use specific transitions (e.g., transition-transform, transition-colors) rather than 'transition-all' where possible to prevent layout thrashing.",
+      "Respect prefers-reduced-motion for all scaling and translation effects."
+    ]
+  },
+  "accessibility": {
+    "contrast": "Ensure #F84E00 CTA text is #FFFFFF. Ensure body text (#727272) is large enough (14px minimum) on #0D0D0D.",
+    "focus": "All interactive elements MUST have focus-visible styling using focus-visible:ring-2 focus-visible:ring-[#F84E00].",
+    "testing": "All interactive and key informational elements MUST include a data-testid attribute in kebab-case."
+  },
+  "media": {
+    "images": {
+      "hero": "Hero images must be vibrant and community-focused. They should always have a dark overlay to make white headline text readable.",
+      "cards": "Card images (h-48 or h-52) must cover the container perfectly (object-cover). Do not stretch images."
+    }
+  },
+  "image_urls": {
+    "hero_banner": [
+      {
+        "url": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwxfHxwZW9wbGUlMjBjb2RpbmclMjB0b2dldGhlcnxlbnwwfHx8fDE3ODQxODMyMTN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Group of people using laptop - vibrant tech community setting",
+        "category": "Hero Featured Event 1"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1515187029135-18ee286d815b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxjcmVhdGl2ZSUyMGRlc2lnbiUyMG1lZXR1cHxlbnwwfHx8fDE3ODQxODMyMDh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Creative group meeting - engaging workshop vibe",
+        "category": "Hero Featured Event 2"
+      }
+    ],
+    "workshops": [
+      {
+        "url": "https://images.unsplash.com/photo-1498075702571-ecb018f3752d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwyfHxhcnQlMjBza2V0Y2glMjB3b3Jrc2hvcCUyMGdyb3VwfGVufDB8fHx8MTc4NDE4MzIwOHww&ixlib=rb-4.1.0&q=85",
+        "description": "Art sketch workshop",
+        "category": "Workshop Event"
+      }
+    ],
+    "hackathons": [
+      {
+        "url": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxwZW9wbGUlMjBjb2RpbmclMjB0b2dldGhlcnxlbnwwfHx8fDE3ODQxODMyMTN8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Hackathon developers coding",
+        "category": "Hackathon Event"
+      }
+    ],
+    "meetups": [
+      {
+        "url": "https://images.unsplash.com/photo-1563461660947-507ef49e9c47?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwxfHxjcmVhdGl2ZSUyMGRlc2lnbiUyMG1lZXR1cHxlbnwwfHx8fDE3ODQxODMyMDh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Design meetup presentation",
+        "category": "Meetup Event"
+      }
+    ],
+    "walks": [
+      {
+        "url": "https://images.unsplash.com/photo-1600714480856-dc99b28892eb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA0MTJ8MHwxfHNlYXJjaHwxfHxjaXR5JTIwd2Fsa2luZyUyMHRvdXIlMjBncm91cHxlbnwwfHx8fDE3ODQxODMyMDh8MA&ixlib=rb-4.1.0&q=85",
+        "description": "City walking tour",
+        "category": "Walking Tour Event"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build the application using React (.js files, not .tsx) and Tailwind CSS.",
+    "Implement the dark theme globally by default. Do not implement a light theme toggle as this app is dark-themed by design.",
+    "Use standard HTML/Tailwind for general layout (Hero, Grids) and integrate Shadcn UI for interactive elements like Select, Dialog, and Dropdown Menus if necessary. Make sure to customize Shadcn to match the specific Clann color palette.",
+    "Integrate lucide-react for all icons (e.g., search, location, bell, calendar, share, bookmark/save).",
+    "Ensure the hero banner auto-scrolls through the 2-3 featured events.",
+    "Build a responsive event grid: 1 column on mobile, 2 on tablet, 3 on desktop.",
+    "Implement the fixed Bottom Tab Bar for mobile devices. Ensure it is hidden on desktop viewports (e.g., hidden md:flex).",
+    "Add data-testid attributes to all buttons, navigation links, and inputs.",
+    "Do not use generic 'Inter' font. Import and use 'Satoshi' as directed in the typography section."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not converge toward generic outputs. Use the defined #18002C card background and #F84E00 primary accents to build a vibrant, energetic Indian community event platform.",
+    "Create depth through layered design elements with z-index hierarchy, especially for sticky headers, fixed tab bars, and modals.",
+    "Use glass-morphism effects with backdrop-blur (12-24px) for the header and mobile tab bar, ensuring the background color is semi-transparent and not fully clear.",
+    "Do NOT apply universal transition: all. Always add transitions for specific properties like transform and colors.",
+    "Do NOT center align the app container. Text alignment should be left by default for readability.",
+    "Use modern pill-shaped or fully rounded buttons for primary CTAs.",
+    "NEVER use Emoji characters (🤖🧠💭) for icons. Use lucide-react.",
+    "Every interaction needs micro-animations - hover states for cards, transitions for buttons, and active states for chips.",
+    "NEVER use placeholder text for images. Use the provided image_urls for the hero sections and event cards."
+  ]
+}

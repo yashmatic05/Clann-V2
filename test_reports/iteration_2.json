@@ -1,0 +1,38 @@
+{
+  "summary": "Full iteration-2 verification: 28 backend tests (100% pass) covering whatsapp-toggle, register/registered, event reminder-toggle, reminder-prefs, feedback, admin/feedback, complete-profile phone validation, saved flow regression, admin/event CRUD with empty external_link. Frontend tested via Playwright on Home, Saved, Profile Feedback, EventDetail, Calendar, Admin Feedback tab, CompleteProfile. All 8 iteration-2 changes verified working end-to-end with no critical issues.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/registered", "issue": "Returns events using events collection's event_date rather than the snapshot event_date stored in registered_events. Not a functional bug for calendar (events rarely change date), but the stored event_date field on registered_events docs is essentially unused by GET /registered. Recommend either returning the snapshot event_date or dropping it from the doc."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_clann_iteration2.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional: harmonize /api/registered to return the snapshot event_date from registered_events collection (or remove unused field)."
+  ],
+  "critical_code_review_comments": [
+    "server.py: seed_events() logger reference occurs before logger is defined (logger is defined at line ~573 while seed_events uses it at line ~552). Since it's only called on startup this happens after module load — currently works but is fragile; move logging.basicConfig / getLogger to top of file.",
+    "CalendarPage.jsx: overlap/amber highlight logic is present but never triggers in practice because /registered dedupes by event_id and returns each event with its actual event_date. Two events can only overlap if they legitimately share the same event_date in the events collection. Consider a small integration test seed with two real events sharing a date to validate visually.",
+    "EventCard/EventDetail: `external_link === ''` disables Register CTA with a tooltip — good UX; make sure any admin-added event without link also passes through same guard on all surfaces (verified on card + detail)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_clann_iteration2.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Admin: admin@clann.com / Clann@2026. User sessions seeded directly in Mongo per /app/auth_testing.md.",
+  "seed_data_creation": "Ephemeral: seeded TEST_ui_user + session, saved_events entry, 2 registered_events (auto-cleaned). Also created and deleted TEST_NoLink_Event (external_link='') to test disabled Register CTA + tooltip.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests are stable and parallel-safe (2 workers). To rerun: `pytest /app/backend/tests/test_clann_iteration2.py -v`. Uses pymongo + REACT_APP_BACKEND_URL. For UI auth flows, seed a Mongo user + session and inject `session_token` cookie for domain clann-upskill.preview.emergentagent.com. All new data-testids from iteration-2 confirmed present: hero-knowmore-*, register-btn-*, knowmore-btn-*, whatsapp-bar-home, whatsapp-bar-home-switch, whatsapp-bar-saved, event-reminder-switch, unsave-confirm, unsave-cancel, unsave-confirm-btn, saved-empty, browse-events-btn, star-1..5, feedback-text, feedback-counter, feedback-submit, feedback-success, admin-tab-events, admin-tab-feedback, feedback-table, cal-prev, cal-next, cal-month, cal-day-N, cal-day-panel, cal-event-*.",
+  "rca_of_the_issue": "No blocking issues found. Minor semantic mismatch on /api/registered where snapshot event_date is stored but not surfaced — noted as low-priority cleanup."
+}

@@ -1,0 +1,63 @@
+{
+  "summary": "Iteration-4 review. Backend: 35/35 pytest passed (is_government create/update/filter + full iteration-2 regression). Frontend: 5/8 features verified working (auth logo img on /auth + /admin, auth-gate redirects for event-card/register/knowmore/hero-knowmore, government-section rendering when a gov event exists, form-government toggle in Add-Event dialog, footer monument stability = 0.0px delta over 5s cycles). CRITICAL FRONTEND BUG: AdminPanel bulk upload feature is broken — `TEMPLATE_HEADERS` and `normalizeRow` are referenced in /app/frontend/src/pages/AdminPanel.jsx but never defined anywhere in the codebase. Clicking `bulk-template-btn` throws Uncaught ReferenceError: TEMPLATE_HEADERS is not defined and shows the CRA red error overlay. Uploading any file via `bulk-file-input` throws ReferenceError: normalizeRow is not defined and no events are created (only a 'Could not read that file' toast). So bulk upload (feature #4) is entirely non-functional despite the UI being present.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminPanel.jsx (downloadTemplate)",
+        "issue": "ReferenceError: TEMPLATE_HEADERS is not defined — clicking [data-testid=bulk-template-btn] throws and shows CRA runtime error overlay. TEMPLATE_HEADERS constant is used on line 111 (XLSX.utils.json_to_sheet(sample, { header: TEMPLATE_HEADERS })) but never declared/imported.",
+        "selector": "[data-testid=bulk-template-btn]",
+        "priority": "CRITICAL"
+      },
+      {
+        "component": "AdminPanel.jsx (processFile)",
+        "issue": "ReferenceError: normalizeRow is not defined — uploading a .xlsx/.csv via [data-testid=bulk-file-input] fails immediately. normalizeRow(raw) is called on line 135 but never declared. Result: 0 events imported, `bulk-stats` never renders, only a red 'Could not read that file' toast appears.",
+        "selector": "[data-testid=bulk-file-input]",
+        "priority": "CRITICAL"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Admin bulk import",
+        "issue": "Neither the Template download nor the file upload actually works because TEMPLATE_HEADERS and normalizeRow helpers are missing from AdminPanel.jsx.",
+        "affected_selectors": ["[data-testid=bulk-template-btn]", "[data-testid=bulk-file-input]", "[data-testid=bulk-stats]"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Home page government section",
+        "issues": ["Government events also appear in the main events grid (because GET /events with no filter returns everything). Iteration spec is silent on this, but you may want to exclude is_government=true events from the default grid to avoid duplication."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_clann_iteration4.py",
+    "/app/backend/tests/test_clann_iteration2.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results_iter4.xml"
+  ],
+  "action_items": [
+    "Add TEMPLATE_HEADERS constant to /app/frontend/src/pages/AdminPanel.jsx — an array of column header strings that matches the sample keys in downloadTemplate() (title, category, mode, short_description, full_description, image_url, location, city, event_date, start_time, end_time, registration_deadline, is_paid, price, total_seats, external_link, skills, recommended_for, featured, is_government).",
+    "Add normalizeRow(raw) helper to /app/frontend/src/pages/AdminPanel.jsx that maps an xlsx/csv row into a POST /api/events payload. Must handle: string→bool for is_paid/featured/is_government (case-insensitive TRUE/FALSE/1/0/yes/no), string→number for total_seats, comma-separated strings for skills and recommended_for, trim strings, and fill sane defaults for missing optional columns.",
+    "Consider excluding is_government=true events from the default homepage grid (or the /events grid) so gov events aren't shown twice (once in main grid, once in Government section)."
+  ],
+  "critical_code_review_comments": [
+    "AdminPanel.jsx line 111 references TEMPLATE_HEADERS and line 135 references normalizeRow — both are undeclared. Webpack compile succeeds because they're inside function bodies (evaluated at runtime), but any real usage throws a ReferenceError. This is a blocker for feature #4.",
+    "AdminPanel.jsx line 44 useEffect(..., [navigate]) is missing loadData in deps (ESLint warning). Non-critical, current behaviour is correct.",
+    "Server.py: GET /events accepts is_government query and adds it to the mongo filter correctly (line 306-307). EventCreate/EventUpdate both include is_government. All good.",
+    "Server.py has ObjectId leaks handled by projection {'_id': 0} consistently. Good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_clann_iteration4.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "63% (5/8 features work end-to-end; bulk upload feature is completely broken)"},
+  "test_credentials": "Admin: admin@clann.com / Clann@2026 (verified via UI login + API).",
+  "seed_data_creation": "Ephemeral gov event 'TEST_Gov_Digital_Skills_Program' (evt_e408f7bb8c) was created via admin API to verify government-section rendering on Home. Deleted after run — DB is clean.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend regression: pytest /app/backend/tests/ -v (35 tests, ~4s). Admin token literal from env is 'clann-admin-secret-2026-super-secure' (obtained via POST /api/admin/login). The two undefined identifiers (TEMPLATE_HEADERS, normalizeRow) in AdminPanel.jsx cause the CRA red error overlay to appear on click of bulk-template-btn and block interaction with the underlying admin page until dismissed — a heavy UX regression. Once main agent adds these two symbols, retest: (1) bulk-template-btn triggers a file download, (2) bulk-file-input POSTs one /events per valid row and updates bulk-stats + events-table + public /events, (3) rows missing title/image_url/external_link/event_date are skipped. Government section on Home is verified working — appears only when >=1 event has is_government=true.",
+  "rca_of_the_issue": "In /app/frontend/src/pages/AdminPanel.jsx the developer wired UI + click handlers but forgot to include two helpers referenced inside the functions:\n  • downloadTemplate() uses `TEMPLATE_HEADERS` (line 111) — likely intended to be a module-scope const array of column header strings\n  • processFile() calls `normalizeRow(raw)` (line 135) — likely intended to be a module-scope helper that coerces xlsx-parsed row objects into the /events POST payload shape\nBoth need to be declared at module scope alongside the existing CATEGORIES/CITIES/MODES/emptyEvent constants. Reproduction: log in to /admin, click 'Template' button → red overlay 'TEMPLATE_HEADERS is not defined'; or upload any .csv/.xlsx → toast 'Could not read that file' + console 'normalizeRow is not defined'. Mitigation: add both symbols; keep normalizeRow tolerant of missing/blank cells and boolean-like strings ('TRUE'/'FALSE'/'true'/'false'/'yes'/'no'/1/0)."
+}
