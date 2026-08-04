@@ -76,6 +76,7 @@ class EventCreate(BaseModel):
     recommended_for: List[str] = []
     featured: bool = False
     is_government: bool = False
+    homepage_category: Optional[str] = None
 
 class EventUpdate(BaseModel):
     title: Optional[str] = None
@@ -99,6 +100,7 @@ class EventUpdate(BaseModel):
     recommended_for: Optional[List[str]] = None
     featured: Optional[bool] = None
     is_government: Optional[bool] = None
+    homepage_category: Optional[str] = None
 
 class AdminLogin(BaseModel):
     email: str
@@ -353,6 +355,21 @@ async def admin_stats(_=Depends(require_admin)):
         "total_users": total_users,
         "total_organizers": total_organizers,
     }
+
+# -----------------------------
+# Homepage Categories
+# -----------------------------
+@api_router.get("/homepage-categories")
+async def get_homepage_categories():
+    raw = await db.events.distinct("homepage_category")
+    categories = [
+        str(c).strip()
+        for c in raw
+        if c is not None and str(c).strip() != ""
+    ]
+    unique_cats = list(set(categories))
+    unique_cats.sort(key=lambda s: s.lower())
+    return unique_cats
 
 # -----------------------------
 # Events

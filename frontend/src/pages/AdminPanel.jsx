@@ -19,6 +19,7 @@ const emptyEvent = {
   image_url: "", location: "", city: "Delhi", event_date: "", start_time: "10:00", end_time: "13:00",
   registration_deadline: "", is_paid: false, price: "", total_seats: 30,
   external_link: "", skills: [], recommended_for: [], featured: false, is_government: false,
+  homepage_category: "",
 };
 
 const TEMPLATE_HEADERS = [
@@ -134,6 +135,13 @@ const AdminPanel = () => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStats, setUploadStats] = useState(null); // {ok, failed, total}
+  const [homepageCategories, setHomepageCategories] = useState([]);
+  const [catLoading, setCatLoading] = useState(false);
+  const [catError, setCatError] = useState(false);
+  const [displayType, setDisplayType] = useState("standard");
+  const [existingCategory, setExistingCategory] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [manualCategory, setManualCategory] = useState("");
   const fileInputRef = useRef(null);
 
   const isAuthed = () => !!localStorage.getItem("clann_admin_token");
@@ -154,13 +162,54 @@ const AdminPanel = () => {
     } catch (err) {
       if (err.response?.status === 401) { localStorage.removeItem("clann_admin_token"); navigate("/admin-clann-secret"); }
     }
+    setCatLoading(true);
+    setCatError(false);
+    try {
+      const cRes = await api.get("/homepage-categories");
+      setHomepageCategories(cRes.data || []);
+    } catch (err) {
+      setCatError(true);
+    } finally {
+      setCatLoading(false);
+    }
   };
 
-  const openAdd = () => { setEditingId(null); setForm(emptyEvent); setSkillsInput(""); setOpen(true); };
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(emptyEvent);
+    setSkillsInput("");
+    setDisplayType("standard");
+    setExistingCategory("");
+    setNewCategoryName("");
+    setManualCategory("");
+    setOpen(true);
+  };
   const openEdit = (ev) => {
     setEditingId(ev.event_id);
     setForm({ ...emptyEvent, ...ev, price: ev.price || "" });
     setSkillsInput((ev.skills || []).join(", "));
+    const cat = (ev.homepage_category || "").trim();
+    if (!cat) {
+      setDisplayType("standard");
+      setExistingCategory("");
+      setNewCategoryName("");
+      setManualCategory("");
+    } else if (catError) {
+      setDisplayType("existing");
+      setExistingCategory(cat);
+      setNewCategoryName("");
+      setManualCategory(cat);
+    } else if (homepageCategories.includes(cat)) {
+      setDisplayType("existing");
+      setExistingCategory(cat);
+      setNewCategoryName("");
+      setManualCategory(cat);
+    } else {
+      setDisplayType("new");
+      setNewCategoryName(cat);
+      setExistingCategory("");
+      setManualCategory(cat);
+    }
     setOpen(true);
   };
 
@@ -168,7 +217,25 @@ const AdminPanel = () => {
     if (!form.title || !form.image_url || !form.external_link || !form.event_date) {
       toast.error("Please fill required fields"); return;
     }
-    const payload = { ...form, skills: skillsInput.split(",").map((s) => s.trim()).filter(Boolean) };
+    let hpCategory = "";
+    if (displayType === "existing") {
+      hpCategory = (catError ? manualCategory : existingCategory).trim();
+      if (!hpCategory) {
+        toast.error("Please select or enter an existing category");
+        return;
+      }
+    } else if (displayType === "new") {
+      hpCategory = newCategoryName.trim();
+      if (!hpCategory) {
+        toast.error("Please enter a new category name");
+        return;
+      }
+    }
+    const payload = {
+      ...form,
+      homepage_category: hpCategory,
+      skills: skillsInput.split(",").map((s) => s.trim()).filter(Boolean),
+    };
     payload.total_seats = Number(payload.total_seats) || 0;
     if (!payload.seats_left) payload.seats_left = payload.total_seats;
     try {
@@ -522,6 +589,104 @@ const AdminPanel = () => {
               </div>
               <Switch data-testid="form-featured" checked={form.featured} onCheckedChange={(v) => setForm({...form, featured: v})} className="data-[state=checked]:bg-[#F84E00]"/>
             </div>
+
+            <div className="bg-[#0D0D0D] rounded-lg p-4 border border-[#46176D]/40 space-y-3">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block">Homepage Display</label>
+                <span className="text-[10px] text-[#727272]">Choose how this event is displayed on the homepage</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  data-testid="display-standard"
+                  onClick={() => setDisplayType("standard")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                    displayType === "standard"
+                      ? "bg-[#F84E00] text-white border-[#F84E00]"
+                      : "bg-[#18002C] text-[#BF72FF] border-[#46176D]/40 hover:text-white"
+                  }`}
+                >
+                  Standard Card
+                </button>
+                <button
+                  type="button"
+                  data-testid="display-existing"
+                  onClick={() => setDisplayType("existing")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                    displayType === "existing"
+                      ? "bg-[#F84E00] text-white border-[#F84E00]"
+                      : "bg-[#18002C] text-[#BF72FF] border-[#46176D]/40 hover:text-white"
+                  }`}
+                >
+                  Add to Existing Category Section
+                </button>
+                <button
+                  type="button"
+                  data-testid="display-new"
+                  onClick={() => setDisplayType("new")}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                    displayType === "new"
+                      ? "bg-[#F84E00] text-white border-[#F84E00]"
+                      : "bg-[#18002C] text-[#BF72FF] border-[#46176D]/40 hover:text-white"
+                  }`}
+                >
+                  Create New Category Section
+                </button>
+              </div>
+
+              {displayType === "existing" && (
+                <div className="pt-2">
+                  {catLoading ? (
+                    <p className="text-xs text-[#BF72FF]">Loading categories…</p>
+                  ) : catError ? (
+                    <div className="space-y-1">
+                      <p className="text-xs text-red-400">Failed to load categories. Enter category manually:</p>
+                      <input
+                        type="text"
+                        data-testid="manual-category-input"
+                        placeholder="e.g. Art Walks"
+                        value={manualCategory}
+                        onChange={(e) => setManualCategory(e.target.value)}
+                        className="w-full bg-[#18002C] border border-[#46176D] rounded-lg px-3 py-2 text-sm text-white placeholder-[#727272] focus:outline-none focus:border-[#BF72FF]"
+                      />
+                    </div>
+                  ) : homepageCategories.length === 0 ? (
+                    <p className="text-xs text-[#727272]">No existing categories found. Switch to "Create New Category Section" to add one.</p>
+                  ) : (
+                    <select
+                      data-testid="existing-category-select"
+                      value={existingCategory}
+                      onChange={(e) => setExistingCategory(e.target.value)}
+                      className="w-full bg-[#18002C] border border-[#46176D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#BF72FF]"
+                    >
+                      <option value="">Select an existing category...</option>
+                      {homepageCategories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {displayType === "new" && (
+                <div className="pt-2 space-y-1">
+                  <input
+                    type="text"
+                    data-testid="new-category-input"
+                    placeholder="Art Walks, Photography Events, College Fests"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="w-full bg-[#18002C] border border-[#46176D] rounded-lg px-3 py-2 text-sm text-white placeholder-[#727272] focus:outline-none focus:border-[#BF72FF]"
+                  />
+                  <p className="text-[10px] text-[#727272]">
+                    This will create a new horizontal section on the homepage with this name. You can add more events to it later.
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#46176D]/40">
               <div>
                 <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block">Government Event</label>
