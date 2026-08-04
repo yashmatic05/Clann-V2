@@ -59,7 +59,7 @@ const VerticalBlock = ({ events, startIndex, savedIds }) => {
  * vertical pair never repeats in a horizontal row, and no event appears in
  * two horizontal rows.
  */
-const MobileEventFeed = ({ events, govEvents, savedIds }) => {
+const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] }) => {
   const feed = useMemo(() => {
     const shown = new Set();
 
@@ -102,11 +102,22 @@ const MobileEventFeed = ({ events, govEvents, savedIds }) => {
     // Block 8 — Hackathons & Competitions (exclude anything already shown)
     const block8 = take(notShown(events.filter((ev) => ev.category === "Hackathon")), events.length);
 
+    // Dynamic homepage category sections (appear after hardcoded sections, before Remaining Events)
+    // Only keep category groups with at least 2 available/not-already-shown events after deduplication.
+    const dynamicSections = [];
+    for (const sec of homepageSections || []) {
+      const avail = notShown(sec.events);
+      if (avail.length >= 2) {
+        avail.forEach((ev) => shown.add(ev.event_id));
+        dynamicSections.push({ title: sec.title, events: avail });
+      }
+    }
+
     // Block 9 — everything remaining
     const block9 = notShown(events);
 
-    return { block1, govList, block3, block4, block5, block6, block7, block8, block9 };
-  }, [events, govEvents]);
+    return { block1, govList, block3, block4, block5, block6, block7, block8, dynamicSections, block9 };
+  }, [events, govEvents, homepageSections]);
 
   return (
     <div className="md:hidden" data-testid="mobile-event-feed">
@@ -155,6 +166,11 @@ const MobileEventFeed = ({ events, govEvents, savedIds }) => {
       {feed.block8.length >= 2 && (
         <HorizontalSection title="Hackathons & Competitions" events={feed.block8} />
       )}
+
+      {/* Dynamic homepage category sections */}
+      {feed.dynamicSections.map((sec) => (
+        <HorizontalSection key={sec.title} title={sec.title} events={sec.events} />
+      ))}
 
       {/* Block 9 — any remaining events */}
       {feed.block9.length > 0 && (

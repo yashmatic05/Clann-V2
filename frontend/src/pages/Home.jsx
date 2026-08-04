@@ -69,6 +69,24 @@ const Home = () => {
   const filteredEvents = useMemo(() => events, [events]);
   const isAll = category === "All";
 
+  const homepageSections = useMemo(() => {
+    const map = new Map();
+    for (const ev of events) {
+      const cat = (ev.homepage_category || "").trim();
+      if (!cat) continue;
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat).push(ev);
+    }
+    const sections = [];
+    for (const [title, evs] of map.entries()) {
+      if (evs.length >= 2) {
+        sections.push({ title, events: evs });
+      }
+    }
+    sections.sort((a, b) => a.title.localeCompare(b.title));
+    return sections;
+  }, [events]);
+
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6">
       <Navbar />
@@ -157,7 +175,7 @@ const Home = () => {
 
       {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
       {isAll && !loading && (
-        <MobileEventFeed events={events} govEvents={govEvents} savedIds={savedIds} />
+        <MobileEventFeed events={events} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} />
       )}
 
       <Footer />
