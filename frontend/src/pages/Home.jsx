@@ -7,6 +7,7 @@ import CategoryFilter, { chipToCategory } from "@/components/CategoryFilter";
 import EventCard from "@/components/EventCard";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import Footer from "@/components/Footer";
+import MobileEventFeed from "@/components/MobileEventFeed";
 import { useAuth } from "@/context/AuthContext";
 import { Landmark } from "lucide-react";
 
@@ -66,6 +67,7 @@ const Home = () => {
   }, [category, mode]);
 
   const filteredEvents = useMemo(() => events, [events]);
+  const isAll = category === "All";
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6">
@@ -97,7 +99,7 @@ const Home = () => {
       {/* Row 2 — Category chips */}
       <CategoryFilter active={category} onChange={setCategory} />
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 md:mt-8">
+      <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 md:mt-8 ${isAll && !loading && events.length > 0 ? "hidden md:block" : ""}`}>
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
@@ -130,7 +132,7 @@ const Home = () => {
       </section>
 
       {govEvents.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20" data-testid="government-section">
+        <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20 ${isAll ? "hidden md:block" : ""}`} data-testid="government-section">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-xl bg-[#46176D]/40 border border-[#BF72FF]/40 flex items-center justify-center text-[#BF72FF]">
               <Landmark size={18} />
@@ -151,6 +153,11 @@ const Home = () => {
             ))}
           </div>
         </section>
+      )}
+
+      {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
+      {isAll && !loading && (
+        <MobileEventFeed events={events} govEvents={govEvents} savedIds={savedIds} />
       )}
 
       <Footer />
