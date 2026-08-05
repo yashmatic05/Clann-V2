@@ -106,6 +106,10 @@ class AdminLogin(BaseModel):
     email: str
     password: str
 
+class CategoryRename(BaseModel):
+    old_name: str
+    new_name: str
+
 class ProfileComplete(BaseModel):
     phone: str
     city: Optional[str] = "Delhi"
@@ -370,6 +374,26 @@ async def get_homepage_categories():
     unique_cats = list(set(categories))
     unique_cats.sort(key=lambda s: s.lower())
     return unique_cats
+
+@api_router.patch("/homepage-categories/rename")
+async def rename_homepage_category(payload: CategoryRename, _=Depends(require_admin)):
+    old_name = payload.old_name.strip()
+    new_name = payload.new_name.strip()
+    if not old_name or not new_name:
+        raise HTTPException(status_code=400, detail="old_name and new_name are required")
+    res = await db.events.update_many(
+        {"homepage_category": old_name},
+        {"$set": {"homepage_category": new_name}}
+    )
+    return {"updated_count": res.modified_count, "count": res.modified_count}
+
+@api_router.delete("/homepage-categories/{category_name}")
+async def delete_homepage_category(category_name: str, _=Depends(require_admin)):
+    res = await db.events.update_many(
+        {"homepage_category": category_name},
+        {"$set": {"homepage_category": None}}
+    )
+    return {"updated_count": res.modified_count, "count": res.modified_count}
 
 # -----------------------------
 # Events

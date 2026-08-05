@@ -142,6 +142,8 @@ const AdminPanel = () => {
   const [existingCategory, setExistingCategory] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [manualCategory, setManualCategory] = useState("");
+  const [editingCategory, setEditingCategory] = useState(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
   const fileInputRef = useRef(null);
 
   const isAuthed = () => !!localStorage.getItem("clann_admin_token");
@@ -252,6 +254,39 @@ const AdminPanel = () => {
     catch { toast.error("Delete failed"); }
   };
 
+  const startEditCategory = (c) => {
+    setEditingCategory(c);
+    setEditingCategoryName(c);
+  };
+
+  const saveCategoryRename = async (oldName) => {
+    const newName = editingCategoryName.trim();
+    if (!newName) {
+      toast.error("Category name cannot be empty");
+      return;
+    }
+    try {
+      await api.patch("/homepage-categories/rename", { old_name: oldName, new_name: newName });
+      toast.success("Category renamed successfully");
+      setEditingCategory(null);
+      setEditingCategoryName("");
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to rename category");
+    }
+  };
+
+  const deleteCategory = async (catName) => {
+    if (!window.confirm(`Delete category "${catName}"? All events with this category will be unassigned.`)) return;
+    try {
+      await api.delete(`/homepage-categories/${encodeURIComponent(catName)}`);
+      toast.success("Category deleted");
+      loadData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Failed to delete category");
+    }
+  };
+
   const toggleFeatured = async (ev) => {
     try { await api.put(`/events/${ev.event_id}`, { featured: !ev.featured }); loadData(); }
     catch { toast.error("Update failed"); }
@@ -358,6 +393,9 @@ const AdminPanel = () => {
               <TabsTrigger data-testid="admin-tab-events" value="events" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">Events</TabsTrigger>
               <TabsTrigger data-testid="admin-tab-feedback" value="feedback" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
                 <MessageSquare size={12} className="mr-1.5"/> Feedback ({feedback.length})
+              </TabsTrigger>
+              <TabsTrigger data-testid="admin-tab-categories" value="categories" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
+                Manage Categories ({homepageCategories.length})
               </TabsTrigger>
             </TabsList>
 
@@ -503,6 +541,81 @@ const AdminPanel = () => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="categories">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-black text-white tracking-tight">Manage Homepage Categories</h2>
+              </div>
+              <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden p-6">
+                {catLoading ? (
+                  <p className="text-sm text-[#BF72FF]">Loading categories...</p>
+                ) : homepageCategories.length === 0 ? (
+                  <p className="text-sm text-[#727272]">No homepage categories found.</p>
+                ) : (
+                  <div className="space-y-3" data-testid="categories-list">
+                    {homepageCategories.map((c) => (
+                      <div
+                        key={c}
+                        data-testid={`category-item-${c}`}
+                        className="flex items-center justify-between bg-[#280049]/40 border border-[#46176D]/30 rounded-lg p-3"
+                      >
+                        {editingCategory === c ? (
+                          <div className="flex items-center gap-2 flex-1 mr-4">
+                            <input
+                              type="text"
+                              data-testid={`category-input-${c}`}
+                              value={editingCategoryName}
+                              onChange={(e) => setEditingCategoryName(e.target.value)}
+                              className="bg-[#0D0D0D] border border-[#BF72FF] rounded px-3 py-1.5 text-sm text-white focus:outline-none w-full max-w-sm"
+                            />
+                            <button
+                              type="button"
+                              data-testid={`category-save-${c}`}
+                              onClick={() => saveCategoryRename(c)}
+                              className="bg-[#F84E00] text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider hover:bg-[#F84E00]/90 transition-colors"
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCategory(null)}
+                              className="bg-[#280049] text-[#BF72FF] px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider hover:text-white transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm font-medium text-white">{c}</span>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          {editingCategory !== c && (
+                            <button
+                              type="button"
+                              data-testid={`category-edit-${c}`}
+                              onClick={() => startEditCategory(c)}
+                              className="text-[#BF72FF] hover:text-white p-1.5 transition-colors"
+                              title="Edit Category"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            data-testid={`category-delete-${c}`}
+                            onClick={() => deleteCategory(c)}
+                            className="text-red-400 hover:text-red-300 p-1.5 transition-colors"
+                            title="Delete Category"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>

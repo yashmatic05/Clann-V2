@@ -79,7 +79,7 @@ const Home = () => {
     }
     const sections = [];
     for (const [title, evs] of map.entries()) {
-      if (evs.length >= 2) {
+      if (evs.length >= 1) {
         sections.push({ title, events: evs });
       }
     }
@@ -88,7 +88,7 @@ const Home = () => {
   }, [events]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6">
+    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6 overflow-x-hidden max-w-full">
       <Navbar />
       <HeroBanner events={featured} />
       <WhatsAppReminderBar testid="whatsapp-bar-home" />

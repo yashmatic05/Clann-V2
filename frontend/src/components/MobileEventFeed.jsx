@@ -23,11 +23,13 @@ const HorizontalRow = ({ events }) => (
 const HorizontalSection = ({ title, events }) => {
   if (events.length === 0) return null;
   return (
-    <section className="mt-8">
+    <section className="mt-8 overflow-x-hidden max-w-full">
       <div className="px-4">
         <SectionHeading title={title} />
       </div>
-      <HorizontalRow events={events} />
+      <div className="overflow-hidden overflow-x-hidden max-w-full">
+        <HorizontalRow events={events} />
+      </div>
     </section>
   );
 };
@@ -51,17 +53,30 @@ const VerticalBlock = ({ events, startIndex, savedIds }) => {
 
 /**
  * Mobile-only structured homepage feed (screens below md / 768px).
- * Block order: 2 vertical cards → Government row → 2 vertical cards →
- * Upcoming row (10) → 2 vertical cards → Workshops row → 2 vertical cards →
- * Hackathons row → remaining vertical cards.
+ * Layout: alternating pattern of stacked full-width EventCard pairs and
+ * horizontal scroll sections for categorized events.
  *
- * Deduplication: a Set tracks every shown event_id — an event shown in a
- * vertical pair never repeats in a horizontal row, and no event appears in
- * two horizontal rows.
+ * Order: pair → Upcoming → pair → Government → pair → Workshops → pair →
+ * Hackathons → pair → Meetups → pair → custom homepage_category sections →
+ * remaining events as stacked cards.
+ *
+ * Deduplication: a single Set tracks every shown event_id across ALL sections.
+ * Custom homepage_category events are reserved BEFORE hardcoded sections
+ * consume events, so they never appear in both a custom section and a
+ * hardcoded section.
  */
 const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] }) => {
   const feed = useMemo(() => {
     const shown = new Set();
+
+    // Pre-exclusion: reserve custom homepage_category events before hardcoded
+    // sections so they are completely excluded from all hardcoded sections
+    // and stacked pairs.
+    for (const sec of homepageSections || []) {
+      for (const ev of sec.events) {
+        shown.add(ev.event_id);
+      }
+    }
 
     // Take up to n events from arr that haven't been shown yet (marks them shown)
     const take = (arr, n) => {
@@ -77,105 +92,140 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
     const notShown = (arr) => arr.filter((ev) => !shown.has(ev.event_id));
 
-    // Block 1 — first 2 events
-    const block1 = take(events, 2);
+    // 1. 2 stacked full width EventCards
+    const pair1 = take(events, 2);
 
-    // Block 2 — Government Events (is_government === true)
-    const govList = notShown(govEvents);
-    govList.forEach((ev) => shown.add(ev.event_id));
+    // 2. Upcoming Events horizontal scroll section
+    const upcoming = take(events, 10);
 
-    // Block 3 — next 2 events
-    const block3 = take(events, 2);
+    // 3. 2 stacked full width EventCards
+    const pair2 = take(events, 2);
 
-    // Block 4 — Upcoming Events: next 10 by event_date (events are pre-sorted), excluding blocks 1 & 3
-    const block4 = take(events, 10);
+    // 4. Government Events horizontal scroll section
+    const govList = take(notShown(govEvents), govEvents.length);
 
-    // Block 5 — next 2 events
-    const block5 = take(events, 2);
+    // 5. 2 stacked full width EventCards
+    const pair3 = take(events, 2);
 
-    // Block 6 — Workshops (exclude anything already shown)
-    const block6 = take(notShown(events.filter((ev) => ev.category === "Workshop")), events.length);
+    // 6. Workshops horizontal scroll section
+    const workshops = take(notShown(events.filter((ev) => ev.category === "Workshop")), events.length);
 
-    // Block 7 — next 2 events
-    const block7 = take(events, 2);
+    // 7. 2 stacked full width EventCards
+    const pair4 = take(events, 2);
 
-    // Block 8 — Hackathons & Competitions (exclude anything already shown)
-    const block8 = take(notShown(events.filter((ev) => ev.category === "Hackathon")), events.length);
+    // 8. Hackathons horizontal scroll section
+    const hackathons = take(notShown(events.filter((ev) => ev.category === "Hackathon" || ev.category === "Hackathons & Competitions")), events.length);
 
-    // Dynamic homepage category sections (appear after hardcoded sections, before Remaining Events)
-    // Only keep category groups with at least 2 available/not-already-shown events after deduplication.
-    const dynamicSections = [];
-    for (const sec of homepageSections || []) {
-      const avail = notShown(sec.events);
-      if (avail.length >= 2) {
-        avail.forEach((ev) => shown.add(ev.event_id));
-        dynamicSections.push({ title: sec.title, events: avail });
-      }
-    }
+    // 9. 2 stacked full width EventCards
+    const pair5 = take(events, 2);
 
-    // Block 9 — everything remaining
-    const block9 = notShown(events);
+    // 10. Meetups horizontal scroll section
+    const meetups = take(notShown(events.filter((ev) => ev.category === "Meetup")), events.length);
 
-    return { block1, govList, block3, block4, block5, block6, block7, block8, dynamicSections, block9 };
+    // 11. 2 stacked full width EventCards
+    const pair6 = take(events, 2);
+
+    // 12. Custom homepage_category sections (at least 1 event)
+    const customSections = (homepageSections || []).filter((sec) => sec.events && sec.events.length >= 1);
+
+    // 13. Remaining events as stacked cards
+    const remaining = notShown(events);
+
+    return {
+      pair1,
+      upcoming,
+      pair2,
+      govList,
+      pair3,
+      workshops,
+      pair4,
+      hackathons,
+      pair5,
+      meetups,
+      pair6,
+      customSections,
+      remaining,
+    };
   }, [events, govEvents, homepageSections]);
 
   return (
-    <div className="md:hidden" data-testid="mobile-event-feed">
-      {/* Block 1 — 2 full-width cards */}
-      {feed.block1.length > 0 && (
+    <div className="md:hidden overflow-x-hidden max-w-full" data-testid="mobile-event-feed">
+      {/* 2 stacked full width EventCards */}
+      {feed.pair1.length > 0 && (
         <div className="mt-6">
-          <VerticalBlock events={feed.block1} startIndex={1000} savedIds={savedIds} />
+          <VerticalBlock events={feed.pair1} startIndex={1000} savedIds={savedIds} />
         </div>
       )}
 
-      {/* Block 2 — Government Events (hidden if fewer than 2) */}
-      {feed.govList.length >= 2 && (
+      {/* Upcoming Events horizontal scroll section */}
+      {feed.upcoming.length > 0 && (
+        <HorizontalSection title="Upcoming Events" events={feed.upcoming} />
+      )}
+
+      {/* 2 stacked full width EventCards */}
+      {feed.pair2.length > 0 && (
+        <div className="mt-8">
+          <VerticalBlock events={feed.pair2} startIndex={1010} savedIds={savedIds} />
+        </div>
+      )}
+
+      {/* Government Events horizontal scroll section */}
+      {feed.govList.length > 0 && (
         <HorizontalSection title="Government Events" events={feed.govList} />
       )}
 
-      {/* Block 3 — 2 full-width cards */}
-      {feed.block3.length > 0 && (
+      {/* 2 stacked full width EventCards */}
+      {feed.pair3.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.block3} startIndex={1002} savedIds={savedIds} />
+          <VerticalBlock events={feed.pair3} startIndex={1020} savedIds={savedIds} />
         </div>
       )}
 
-      {/* Block 4 — Upcoming Events (next 10) */}
-      <HorizontalSection title="Upcoming Events" events={feed.block4} />
+      {/* Workshops horizontal scroll section */}
+      {feed.workshops.length > 0 && (
+        <HorizontalSection title="Workshops" events={feed.workshops} />
+      )}
 
-      {/* Block 5 — 2 full-width cards */}
-      {feed.block5.length > 0 && (
+      {/* 2 stacked full width EventCards */}
+      {feed.pair4.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.block5} startIndex={1004} savedIds={savedIds} />
+          <VerticalBlock events={feed.pair4} startIndex={1030} savedIds={savedIds} />
         </div>
       )}
 
-      {/* Block 6 — Workshops (hidden if fewer than 2) */}
-      {feed.block6.length >= 2 && (
-        <HorizontalSection title="Workshops" events={feed.block6} />
+      {/* Hackathons horizontal scroll section */}
+      {feed.hackathons.length > 0 && (
+        <HorizontalSection title="Hackathons & Competitions" events={feed.hackathons} />
       )}
 
-      {/* Block 7 — 2 full-width cards */}
-      {feed.block7.length > 0 && (
+      {/* 2 stacked full width EventCards */}
+      {feed.pair5.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.block7} startIndex={1006} savedIds={savedIds} />
+          <VerticalBlock events={feed.pair5} startIndex={1040} savedIds={savedIds} />
         </div>
       )}
 
-      {/* Block 8 — Hackathons & Competitions (hidden if fewer than 2) */}
-      {feed.block8.length >= 2 && (
-        <HorizontalSection title="Hackathons & Competitions" events={feed.block8} />
+      {/* Meetups horizontal scroll section */}
+      {feed.meetups.length > 0 && (
+        <HorizontalSection title="Meetups" events={feed.meetups} />
       )}
 
-      {/* Dynamic homepage category sections */}
-      {feed.dynamicSections.map((sec) => (
+      {/* 2 stacked full width EventCards */}
+      {feed.pair6.length > 0 && (
+        <div className="mt-8">
+          <VerticalBlock events={feed.pair6} startIndex={1050} savedIds={savedIds} />
+        </div>
+      )}
+
+      {/* Custom homepage_category sections */}
+      {feed.customSections.map((sec) => (
         <HorizontalSection key={sec.title} title={sec.title} events={sec.events} />
       ))}
 
-      {/* Block 9 — any remaining events */}
-      {feed.block9.length > 0 && (
+      {/* Remaining events as stacked cards */}
+      {feed.remaining.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.block9} startIndex={1008} savedIds={savedIds} />
+          <VerticalBlock events={feed.remaining} startIndex={1060} savedIds={savedIds} />
         </div>
       )}
     </div>
