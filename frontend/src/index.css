@@ -119,11 +119,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 @keyframes rocketBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  0%, 100% { transform: translateY(0); -webkit-transform: translateY(0); }
+  50% { transform: translateY(-3px); -webkit-transform: translateY(-3px); }
+}
+@-webkit-keyframes rocketBounce {
+  0%, 100% { -webkit-transform: translateY(0); transform: translateY(0); }
+  50% { -webkit-transform: translateY(-3px); transform: translateY(-3px); }
 }
 
 .rocket-bounce {
   animation: rocketBounce 1s ease-in-out infinite;
+  -webkit-animation: rocketBounce 1s ease-in-out infinite;
   display: inline-block;
+  will-change: transform;
 }

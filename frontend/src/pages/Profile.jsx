@@ -3,13 +3,203 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
-import EventCard from "@/components/EventCard";
-import { LogOut, Mail, Phone, MapPin, Building2, Star, Bookmark } from "lucide-react";
+import {
+  LogOut, Mail, Phone, MapPin, Building2, Star,
+  Bookmark, Calendar, ChevronRight,
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const MAX = 300;
 
+/* ------------------------------------------------------------------ */
+/* Helpers — identical logic/colors to CompactEventCard / EventCard    */
+/* ------------------------------------------------------------------ */
+const categoryColor = (cat) => {
+  const c = (cat || "").toLowerCase();
+  if (c.includes("workshop")) return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+  if (c.includes("hackathon")) return "bg-orange-500/15 text-orange-300 border-orange-400/40";
+  if (c.includes("meetup")) return "bg-teal-500/15 text-teal-300 border-teal-400/40";
+  if (c.includes("conference")) return "bg-blue-500/15 text-blue-300 border-blue-400/40";
+  if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
+  if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
+  return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+};
+
+const parseDate = (s) => {
+  if (!s) return null;
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+};
+
+const daysBetween = (a, b) => {
+  const MS = 24 * 60 * 60 * 1000;
+  const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((aa - bb) / MS);
+};
+
+const formatDate = (d) => {
+  if (!d) return null;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+const registrationStatus = (event) => {
+  const today = new Date();
+  const eventDate = parseDate(event.event_date);
+  const deadline = parseDate(event.registration_deadline) || eventDate;
+  if (!deadline) return { text: "Date TBA", tone: "muted" };
+  const diff = daysBetween(deadline, today);
+  if (diff < 0) return { text: "Registration closed", tone: "muted" };
+  if (diff === 0) return { text: "Closes today", tone: "urgent" };
+  if (diff === 1) return { text: "1 Day Left", tone: "urgent" };
+  if (diff <= 7) return { text: `${diff} Days Left`, tone: "urgent" };
+  return { text: `Register before ${formatDate(deadline)}`, tone: "normal" };
+};
+
+/* ------------------------------------------------------------------ */
+/* SavedEventCard — exact compact design from Home horizontal rows,    */
+/* but bookmark triggers the existing unsave confirmation flow.        */
+/* ------------------------------------------------------------------ */
+const SavedEventCard = ({ event, index = 0, onUnsave }) => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [removing, setRemoving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const askUnsave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmOpen(true);
+  };
+
+  const confirmRemove = async () => {
+    try {
+      await api.delete(`/events/${event.event_id}/save`);
+      setRemoving(true);
+      toast.success("Event removed from saved list");
+      setTimeout(() => { onUnsave?.(event.event_id); }, 320);
+    } catch {
+      toast.error("Could not remove");
+    }
+    setConfirmOpen(false);
+  };
+
+  const hasRegLink = !!(event.external_link && event.external_link.trim());
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) { toast.error("Sign up to register for events"); navigate("/auth"); return; }
+    if (!hasRegLink) return;
+    try { await api.post(`/events/${event.event_id}/register`); }
+    catch (err) { console.error("[saved-card] register track failed", err); }
+    window.open(event.external_link, "_blank", "noopener,noreferrer");
+  };
+
+  const status = registrationStatus(event);
+  const displayDate = (() => {
+    const d = parseDate(event.event_date);
+    return d
+      ? d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
+      : event.event_date;
+  })();
+
+  return (
+    <>
+      <Link
+        to={`/event/${event.event_id}`}
+        data-testid={`saved-compact-card-${index}`}
+        className={`group w-[200px] h-[280px] shrink-0 flex flex-col bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 hover:border-[#46176D] transition-[border-color,opacity,transform] duration-300 ${removing ? "opacity-0 scale-95" : ""}`}
+      >
+        {/* Image — fixed 100px */}
+        <div className="relative h-[100px] shrink-0 overflow-hidden bg-[#280049]">
+          <img
+            src={event.image_url}
+            alt={event.title}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          {/* Filled-orange bookmark → unsave confirmation */}
+          <button
+            type="button"
+            onClick={askUnsave}
+            aria-label="Remove from saved"
+            title="Remove from saved"
+            data-testid={`saved-unsave-btn-${index}`}
+            className="absolute top-2 right-2 p-[6px] rounded-full bg-black/50 text-[#F84E00] transition-colors"
+          >
+            <Bookmark size={12} fill="currentColor" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-h-0 p-3 flex flex-col gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+              {event.category}
+            </span>
+            <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${event.is_paid ? "border border-[#F84E00] text-[#F84E00]" : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40"}`}>
+              {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
+            </span>
+          </div>
+
+          <h3 className="text-xs font-bold text-white tracking-tight leading-snug line-clamp-2">
+            {event.title}
+          </h3>
+
+          <p className="flex items-center gap-1 text-[10px] text-white/80 truncate">
+            <MapPin size={10} className="text-[#BF72FF] shrink-0" />
+            <span className="truncate">
+              {event.city}{event.location ? ` | ${event.location.split(",")[0]}` : ""}
+            </span>
+          </p>
+
+          <p className="flex items-center gap-1 text-[10px] text-white/80 truncate">
+            <Calendar size={10} className="text-[#BF72FF] shrink-0" />
+            <span className="truncate">{displayDate}</span>
+          </p>
+
+          <p className={`text-[10px] font-semibold truncate ${
+            status.tone === "urgent" ? "text-[#F84E00]" :
+            status.tone === "muted" ? "text-[#727272]" :
+            "text-[#BF72FF]"
+          }`}>
+            {status.text}
+          </p>
+
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={!hasRegLink}
+            title={hasRegLink ? "" : "Registration link coming soon"}
+            data-testid={`saved-register-btn-${index}`}
+            className="mt-auto w-full inline-flex items-center justify-center gap-1 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-full px-3 py-2 text-[11px] font-bold transition-colors whitespace-nowrap"
+          >
+            Register <ChevronRight size={11} />
+          </button>
+        </div>
+      </Link>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" data-testid="saved-unsave-confirm">
+          <div className="bg-[#18002C] border border-[#46176D] rounded-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-white">Remove from saved list?</h3>
+            <p className="mt-1 text-sm text-[#727272]">You can save this event again later.</p>
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setConfirmOpen(false)} data-testid="saved-unsave-cancel" className="flex-1 bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] rounded-full px-4 py-2.5 text-sm font-bold transition-colors">Cancel</button>
+              <button onClick={confirmRemove} data-testid="saved-unsave-confirm-btn" className="flex-1 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-4 py-2.5 text-sm font-bold transition-colors">Yes, Remove</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Profile page                                                        */
+/* ------------------------------------------------------------------ */
 const Profile = () => {
   const { user, loading, logout, checkAuth } = useAuth();
   const navigate = useNavigate();
@@ -81,13 +271,14 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* 2. Saved Events */}
+        {/* 2. Saved Events — horizontal scroll of compact cards */}
         <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6" data-testid="profile-saved-section">
           <div className="flex items-center gap-2 mb-4">
             <Bookmark className="text-[#F84E00]" size={18}/>
             <h2 className="text-xl font-black text-white tracking-tight">Saved Events</h2>
             <span className="ml-auto text-xs text-[#727272]" data-testid="profile-saved-count">{saved.length}</span>
           </div>
+
           {saved.length === 0 ? (
             <div className="py-8 text-center" data-testid="profile-saved-empty">
               <p className="text-white font-bold">No saved events yet</p>
@@ -97,13 +288,15 @@ const Profile = () => {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div
+              data-testid="profile-saved-row"
+              className="-mx-6 flex gap-3 overflow-x-auto scrollbar-hide [-webkit-overflow-scrolling:touch] px-4 pb-1"
+            >
               {saved.map((ev, i) => (
-                <EventCard
+                <SavedEventCard
                   key={ev.event_id}
                   event={ev}
-                  index={200 + i}
-                  initialSaved={true}
+                  index={i}
                   onUnsave={removeSaved}
                 />
               ))}

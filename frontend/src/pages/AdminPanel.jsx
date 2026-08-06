@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Star, LogOut, Calendar, Users, TicketCheck, MessageSquare, Upload, FileSpreadsheet, Download } from "lucide-react";
+import { Plus, Edit2, Trash2, Star, LogOut, Calendar, Users, TicketCheck, MessageSquare, Upload, FileSpreadsheet, Download, Wand2, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -122,6 +122,73 @@ const normalizeRow = (row) => {
   };
 };
 
+// Client-side mirror of backend generate_event_tags — used in the create form
+// where the event does not yet exist to call the generate-tags endpoint.
+const containsAny = (text, keywords) => {
+  if (!text) return false;
+  return keywords.some((kw) => {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(text);
+  });
+};
+
+const dedupeTags = (items) => {
+  const seen = new Set();
+  const out = [];
+  for (const item of items) {
+    if (item === undefined || item === null) continue;
+    const s = String(item).trim();
+    const key = s.toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
+};
+
+const generateEventTags = (title, category, shortDescription) => {
+  const titleText = (title || "").trim();
+  const haystack = `${titleText} ${(shortDescription || "").trim()}`.trim();
+  const cat = (category || "").trim().toLowerCase();
+
+  let skills = [];
+  if (cat === "workshop" || containsAny(haystack, ["design", "figma", "sketch", "illustration", "art"])) {
+    skills = skills.concat(["Design Thinking", "Visual Communication", "Creative Skills"]);
+  }
+  if (containsAny(titleText, ["coding", "python", "javascript", "web", "app", "tech", "ai", "ml"])) {
+    skills = skills.concat(["Programming", "Technical Skills", "Problem Solving"]);
+  }
+  if (containsAny(titleText, ["public speaking", "communication", "presentation"])) {
+    skills = skills.concat(["Communication", "Public Speaking", "Confidence"]);
+  }
+  if (containsAny(titleText, ["business", "startup", "entrepreneurship", "marketing"])) {
+    skills = skills.concat(["Business Strategy", "Networking", "Leadership"]);
+  }
+  if (containsAny(titleText, ["photography", "film", "cinema", "video"])) {
+    skills = skills.concat(["Visual Storytelling", "Photography", "Creative Direction"]);
+  }
+  if (containsAny(titleText, ["music", "dance", "performance", "theatre", "acting"])) {
+    skills = skills.concat(["Performance", "Stage Presence", "Creative Expression"]);
+  }
+  if (cat === "hackathon") skills = skills.concat(["Problem Solving", "Teamwork", "Innovation"]);
+  if (cat === "conference") skills = skills.concat(["Industry Knowledge", "Networking", "Professional Development"]);
+  if (cat === "meetup") skills = skills.concat(["Networking", "Community Building", "Communication"]);
+  if (skills.length === 0) skills = ["Learning", "Networking", "Skill Development"];
+
+  let recs = [];
+  if (containsAny(titleText, ["student", "college", "university", "campus"])) recs.push("Students");
+  if (containsAny(titleText, ["beginner", "starter", "introduction", "basics", "101"])) recs.push("Beginners");
+  if (containsAny(titleText, ["professional", "corporate", "industry", "career"])) recs.push("Professionals");
+  if (containsAny(titleText, ["designer", "design"])) recs.push("Designers");
+  if (containsAny(titleText, ["developer", "coder", "programmer"])) recs.push("Developers");
+  if (containsAny(titleText, ["entrepreneur", "founder", "startup"])) recs.push("Entrepreneurs");
+  if (cat === "hackathon") recs = recs.concat(["Students", "Developers", "Innovators"]);
+  if (cat === "conference") recs = recs.concat(["Professionals", "Industry Experts"]);
+  if (recs.length === 0) recs = ["All", "Curious Minds"];
+
+  return { skills: dedupeTags(skills).slice(0, 5), recommendedFor: dedupeTags(recs).slice(0, 5) };
+};
+
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ total_events: 0, total_users: 0, total_organizers: 0 });
@@ -134,6 +201,7 @@ const AdminPanel = () => {
   const [skillsInput, setSkillsInput] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generatingTags, setGeneratingTags] = useState(false);
   const [uploadStats, setUploadStats] = useState(null); // {ok, failed, total}
   const [homepageCategories, setHomepageCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(false);
@@ -295,6 +363,31 @@ const AdminPanel = () => {
   const logout = () => { localStorage.removeItem("clann_admin_token"); navigate("/admin-clann-secret"); };
 
   const toggleAudience = (a) => setForm((f) => ({ ...f, recommended_for: f.recommended_for.includes(a) ? f.recommended_for.filter((x) => x !== a) : [...f.recommended_for, a] }));
+
+  const handleGenerateTags = async () => {
+    setGeneratingTags(true);
+    try {
+      let skills, recommendedFor;
+      if (editingId) {
+        // Existing event — regenerate on the server and persist immediately.
+        const { data } = await api.post(`/admin/events/${editingId}/generate-tags`);
+        skills = data.skills || [];
+        recommendedFor = data.recommended_for || [];
+      } else {
+        // New event — derive locally (no record exists to call the endpoint with).
+        const gen = generateEventTags(form.title, form.category, form.short_description);
+        skills = gen.skills;
+        recommendedFor = gen.recommendedFor;
+      }
+      setSkillsInput(skills.join(", "));
+      setForm((f) => ({ ...f, skills, recommended_for: recommendedFor }));
+      toast.success("Tags generated");
+    } catch {
+      toast.error("Failed to generate tags");
+    } finally {
+      setGeneratingTags(false);
+    }
+  };
 
   const downloadTemplate = () => {
     const sample = [{
@@ -684,9 +777,22 @@ const AdminPanel = () => {
               )}
             </div>
             <Field label="External Registration Link *"><input data-testid="form-link" value={form.external_link} onChange={(e) => setForm({...form, external_link: e.target.value})} placeholder="https://..." className={inputCls}/></Field>
-            <Field label="Skills You Will Learn (comma separated)">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Skills You Will Learn (comma separated)</label>
+                <button
+                  type="button"
+                  data-testid="generate-tags-btn"
+                  onClick={handleGenerateTags}
+                  disabled={generatingTags}
+                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#BF72FF] hover:text-white border border-[#46176D]/60 hover:border-[#BF72FF] rounded-full px-2.5 py-1 transition-colors disabled:opacity-60"
+                >
+                  {generatingTags ? <Loader2 size={11} className="animate-spin"/> : <Wand2 size={11}/>}
+                  Auto Generate
+                </button>
+              </div>
               <input data-testid="form-skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="Graphic Design, Color Theory" className={inputCls}/>
-            </Field>
+            </div>
             <div>
               <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Recommended For</label>
               <div className="mt-2 flex flex-wrap gap-2">

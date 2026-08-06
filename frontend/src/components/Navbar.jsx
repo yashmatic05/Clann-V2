@@ -1,17 +1,10 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Bell, LogOut as LogOutIcon, User as UserIcon } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const Navbar = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-40 bg-[#0D0D0D]/85 backdrop-blur-xl border-b border-[#280049]" data-testid="top-navbar">
@@ -28,25 +21,21 @@ const Navbar = () => {
               <button data-testid="nav-bell-btn" aria-label="Notifications" className="p-2 rounded-full hover:bg-[#18002C] text-white transition-colors">
                 <Bell size={18} />
               </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button data-testid="nav-profile-btn" className="flex items-center rounded-full">
-                    {user.picture ? (
-                      <img src={user.picture} alt={user.name || "Profile"} className="w-9 h-9 rounded-full border-2 border-[#46176D]" />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-[#46176D] flex items-center justify-center text-white font-bold">
-                        {user.name?.[0]?.toUpperCase() || "U"}
-                      </div>
-                    )}
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#18002C] border-[#46176D] text-white min-w-[180px]">
-                  <div className="px-2 py-2 text-xs text-[#BF72FF] font-bold uppercase tracking-wider">{user.role || 'Attendee'}</div>
-                  <DropdownMenuItem className="focus:bg-[#280049] focus:text-white cursor-pointer" onClick={() => navigate('/profile')} data-testid="menu-profile">
-                    <UserIcon size={14} className="mr-2" /> Profile
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Single tap → /profile (no dropdown) */}
+              <Link
+                to="/profile"
+                data-testid="nav-profile-btn"
+                aria-label="Go to your profile"
+                className="flex items-center rounded-full"
+              >
+                {user.picture ? (
+                  <img src={user.picture} alt={user.name || "Profile"} className="w-9 h-9 rounded-full border-2 border-[#46176D]" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-[#46176D] flex items-center justify-center text-white font-bold">
+                    {user.name?.[0]?.toUpperCase() || "U"}
+                  </div>
+                )}
+              </Link>
             </>
           ) : (
             <Link

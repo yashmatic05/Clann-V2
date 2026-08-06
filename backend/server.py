@@ -251,6 +251,104 @@ def event_public(doc: dict) -> dict:
     doc.pop("_id", None)
     return doc
 
+
+def _contains_any(text: str, keywords) -> bool:
+    """Case-insensitive whole-word match for any keyword in `text`."""
+    if not text:
+        return False
+    for kw in keywords:
+        # Word-boundary match so "app" doesn't match "apple", etc.
+        if re.search(r"\b" + re.escape(kw.strip()) + r"\b", text, re.IGNORECASE):
+            return True
+    return False
+
+
+def _dedupe(items) -> list:
+    """Case-insensitive deduplication preserving first-seen order."""
+    seen = set()
+    out = []
+    for item in items:
+        if item is None:
+            continue
+        key = str(item).strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(str(item).strip())
+    return out
+
+
+def generate_event_tags(title: str, category: str, short_description: str):
+    """Auto-generate `skills_tags` and `recommended_for_tags` via keyword matching.
+
+    No external API is used. Each returned list is deduplicated and capped at 5.
+    """
+    title_text = (title or "").strip()
+    desc_text = (short_description or "").strip()
+    haystack = f"{title_text} {desc_text}".strip()
+    cat = (category or "").strip().lower()
+
+    # ---- Skills ----
+    skills = []
+    if cat == "workshop" or _contains_any(
+        haystack, ["design", "figma", "sketch", "illustration", "art"]
+    ):
+        skills += ["Design Thinking", "Visual Communication", "Creative Skills"]
+    if _contains_any(
+        title_text,
+        ["coding", "python", "javascript", "web", "app", "tech", "ai", "ml"],
+    ):
+        skills += ["Programming", "Technical Skills", "Problem Solving"]
+    if _contains_any(
+        title_text, ["public speaking", "communication", "presentation"]
+    ):
+        skills += ["Communication", "Public Speaking", "Confidence"]
+    if _contains_any(
+        title_text, ["business", "startup", "entrepreneurship", "marketing"]
+    ):
+        skills += ["Business Strategy", "Networking", "Leadership"]
+    if _contains_any(
+        title_text, ["photography", "film", "cinema", "video"]
+    ):
+        skills += ["Visual Storytelling", "Photography", "Creative Direction"]
+    if _contains_any(
+        title_text, ["music", "dance", "performance", "theatre", "acting"]
+    ):
+        skills += ["Performance", "Stage Presence", "Creative Expression"]
+    if cat == "hackathon":
+        skills += ["Problem Solving", "Teamwork", "Innovation"]
+    if cat == "conference":
+        skills += ["Industry Knowledge", "Networking", "Professional Development"]
+    if cat == "meetup":
+        skills += ["Networking", "Community Building", "Communication"]
+    if not skills:
+        skills = ["Learning", "Networking", "Skill Development"]
+    skills_tags = _dedupe(skills)[:5]
+
+    # ---- Recommended For ----
+    recs = []
+    if _contains_any(title_text, ["student", "college", "university", "campus"]):
+        recs.append("Students")
+    if _contains_any(title_text, ["beginner", "starter", "introduction", "basics", "101"]):
+        recs.append("Beginners")
+    if _contains_any(title_text, ["professional", "corporate", "industry", "career"]):
+        recs.append("Professionals")
+    if _contains_any(title_text, ["designer", "design"]):
+        recs.append("Designers")
+    if _contains_any(title_text, ["developer", "coder", "programmer"]):
+        recs.append("Developers")
+    if _contains_any(title_text, ["entrepreneur", "founder", "startup"]):
+        recs.append("Entrepreneurs")
+    if cat == "hackathon":
+        recs += ["Students", "Developers", "Innovators"]
+    if cat == "conference":
+        recs += ["Professionals", "Industry Experts"]
+    if not recs:
+        recs = ["All", "Curious Minds"]
+    recommended_for_tags = _dedupe(recs)[:5]
+
+    return skills_tags, recommended_for_tags
+
 # -----------------------------
 # Auth Endpoints (Emergent Google)
 # -----------------------------
@@ -517,6 +615,18 @@ async def create_event(payload: EventCreate, _=Depends(require_admin)):
     event_id = f"evt_{uuid.uuid4().hex[:10]}"
     doc = payload.model_dump()
     doc["event_id"] = event_id
+
+    # Auto-generate skills / recommended_for tags only when the admin
+    # hasn't provided them. Bulk Excel import posts each row here too, so
+    # imported events get tags on the same path.
+    auto_skills, auto_recs = generate_event_tags(
+        payload.title, payload.category, payload.short_description
+    )
+    if not doc.get("skills"):
+        doc["skills"] = auto_skills
+    if not doc.get("recommended_for"):
+        doc["recommended_for"] = auto_recs
+
     clann_event_id = generate_event_id(payload.title, payload.category)
     # Retry on the (rare) chance the random suffix collides with an existing ID.
     while await db.events.find_one(
@@ -548,6 +658,22 @@ async def delete_event(event_id: str, _=Depends(require_admin)):
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Event not found")
     return {"ok": True}
+
+
+@api_router.post("/admin/events/{event_id}/generate-tags")
+async def admin_generate_tags(event_id: str, _=Depends(require_admin)):
+    """Regenerate skills + recommended_for tags for an existing event and persist them."""
+    doc = await db.events.find_one({"event_id": event_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Event not found")
+    skills, recs = generate_event_tags(
+        doc.get("title", ""), doc.get("category", ""), doc.get("short_description", "")
+    )
+    await db.events.update_one(
+        {"event_id": event_id},
+        {"$set": {"skills": skills, "recommended_for": recs}},
+    )
+    return {"ok": True, "skills": skills, "recommended_for": recs}
 
 # -----------------------------
 # Save / Bookmark
