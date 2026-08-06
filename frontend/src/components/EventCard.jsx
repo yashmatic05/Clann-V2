@@ -193,7 +193,7 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
           }`}>
             {status.tone === "urgent" ? (
               <>
-                <span className="rocket-bounce">🚀</span>{" "}{status.text}
+                <span className="rocket-bounce inline-flex items-center gap-1">🚀</span>{" "}{status.text}
               </>
             ) : (
               status.text
