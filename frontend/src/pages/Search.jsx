@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, searchEvents } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
@@ -8,42 +9,64 @@ import { useAuth } from "@/context/AuthContext";
 
 const Search = () => {
   const { user } = useAuth();
-  const [q, setQ] = useState("");
-  const [all, setAll] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [q, setQ] = useState(searchParams.get("q") || "");
+  const [results, setResults] = useState([]);
   const [savedIds, setSavedIds] = useState(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await api.get("/events");
-        setAll(data);
-      } catch (err) { console.error("[search] load failed", err); }
-      setLoading(false);
-    })();
-  }, []);
-
+  // Load saved events for current user
   useEffect(() => {
     if (!user) return;
     (async () => {
       try {
         const { data } = await api.get("/saved");
         setSavedIds(new Set(data.map((e) => e.event_id)));
-      } catch (err) { console.error("[search] load saved failed", err); }
+      } catch (err) {
+        console.error("[search] load saved failed", err);
+      }
     })();
   }, [user]);
 
-  const results = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return all;
-    return all.filter((e) =>
-      (e.title || "").toLowerCase().includes(s) ||
-      (e.short_description || "").toLowerCase().includes(s) ||
-      (e.full_description || "").toLowerCase().includes(s) ||
-      (e.category || "").toLowerCase().includes(s) ||
-      (e.city || "").toLowerCase().includes(s)
-    );
-  }, [q, all]);
+  // Perform backend search when query changes
+  useEffect(() => {
+    const query = q.trim();
+    if (!query) {
+      setResults([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    const performSearch = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data } = await searchEvents(query);
+        setResults(data);
+      } catch (err) {
+        console.error("[search] backend search failed", err);
+        setError("Search failed. Please try again.");
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Small delay to avoid excessive API calls while typing
+    const timer = setTimeout(performSearch, 300);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  // Update URL when search query changes
+  useEffect(() => {
+    if (q) {
+      setSearchParams({ q });
+    } else {
+      setSearchParams({});
+    }
+  }, [q, setSearchParams]);
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
@@ -52,7 +75,7 @@ const Search = () => {
         <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
           <SearchIcon className="text-[#F84E00]"/> Search Events
         </h1>
-        <p className="text-sm text-[#727272] mt-1">Find events by name, category, city, or keyword.</p>
+        <p className="text-sm text-[#727272] mt-1">Find events by name, category, city, or CLANN Event ID.</p>
 
         <div className="mt-6 relative">
           <SearchIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#727272]" />
@@ -67,7 +90,15 @@ const Search = () => {
           />
         </div>
 
-        <p className="mt-4 text-xs text-[#727272]" data-testid="search-count">{loading ? "Loading..." : `${results.length} results`}</p>
+        <p className="mt-4 text-xs text-[#727272]" data-testid="search-count">
+          {loading ? "Searching..." : error ? error : `${results.length} result${results.length !== 1 ? "s" : ""}`}
+        </p>
+
+        {error && !loading && (
+          <div className="mt-4 text-center text-[#F84E00] text-sm">
+            <p>{error}</p>
+          </div>
+        )}
 
         <div data-testid="search-grid" className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-6">
           {results.map((ev, i) => (
@@ -80,7 +111,7 @@ const Search = () => {
           ))}
         </div>
 
-        {!loading && results.length === 0 && (
+        {!loading && !error && results.length === 0 && q.trim() && (
           <div className="py-16 text-center text-[#727272]" data-testid="search-empty">
             <p className="text-white font-bold text-lg mb-1">No matches</p>
             <p className="text-sm">Try a different keyword.</p>

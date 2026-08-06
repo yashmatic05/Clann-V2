@@ -8,6 +8,7 @@ import { MapPin, Calendar, Clock, Copy, Bookmark, ChevronRight, ChevronLeft, Mes
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { registrationStatus } from "@/lib/event-utils";
 
 const EventDetail = () => {
   const { id } = useParams();
@@ -101,6 +102,8 @@ const EventDetail = () => {
 
   if (!event) return <div className="min-h-screen bg-[#0D0D0D]" />;
 
+  const status = registrationStatus(event);
+
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
       <Navbar />
@@ -152,6 +155,21 @@ const EventDetail = () => {
         <h1 data-testid="event-title" className="mt-3 text-3xl sm:text-5xl font-black text-white tracking-tighter leading-none">
           {event.title}
         </h1>
+
+        {/* Registration deadline status — shown before primary CTA */}
+        <div
+          data-testid="event-registration-status"
+          className={`mt-4 flex items-center gap-2 text-sm font-semibold ${
+            status.tone === "urgent" ? "text-[#F84E00]" :
+            status.tone === "muted" ? "text-[#727272]" :
+            "text-[#BF72FF]"
+          }`}
+        >
+          {status.tone === "urgent" && (
+            <span className="rocket-bounce inline-flex items-center gap-1">🚀</span>
+          )}
+          {status.text}
+        </div>
 
         <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
           <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-4">

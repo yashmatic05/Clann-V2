@@ -4,6 +4,7 @@ import { MapPin, Calendar, ChevronRight, Copy, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { registrationStatus, parseDate } from "@/lib/event-utils";
 
 // Same per-category chip colors as EventCard (kept local — EventCard must stay untouched)
 const categoryColor = (cat) => {
@@ -15,38 +16,6 @@ const categoryColor = (cat) => {
   if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
   if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-};
-
-const parseDate = (s) => {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const daysBetween = (a, b) => {
-  const MS = 24 * 60 * 60 * 1000;
-  const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  return Math.round((aa - bb) / MS);
-};
-
-const formatDate = (d) => {
-  if (!d) return null;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-// Identical registration-status logic to EventCard
-const registrationStatus = (event) => {
-  const today = new Date();
-  const eventDate = parseDate(event.event_date);
-  const deadline = parseDate(event.registration_deadline) || eventDate;
-  if (!deadline) return { text: "Date TBA", tone: "muted" };
-  const diff = daysBetween(deadline, today);
-  if (diff < 0) return { text: "Registration closed", tone: "muted" };
-  if (diff === 0) return { text: "Closes today", tone: "urgent" };
-  if (diff === 1) return { text: "1 Day Left", tone: "urgent" };
-  if (diff <= 7) return { text: `${diff} Days Left`, tone: "urgent" };
-  return { text: `Register before ${formatDate(deadline)}`, tone: "normal" };
 };
 
 /**
@@ -168,11 +137,16 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
 
       {/* Content — all lines clamped/truncated to keep the fixed 280px height */}
       <div className="flex-1 min-h-0 p-3 flex flex-col gap-1">
-        {/* Category + Free/Paid tags on one row */}
-        <div className="flex items-center gap-1.5">
-          <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
-            {event.category}
-          </span>
+        {/* LEFT GROUP: Category + Mode | RIGHT GROUP: Free/Paid */}
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex items-center gap-1.5">
+            <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+              {event.category}
+            </span>
+            <span className="rounded-md bg-[#280049] text-[#BF72FF] border border-[#46176D]/40 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider whitespace-nowrap">
+              {event.mode}
+            </span>
+          </div>
           <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${event.is_paid ? "border border-[#F84E00] text-[#F84E00]" : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40"}`}>
             {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
           </span>
@@ -198,12 +172,15 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
           <span className="truncate">{displayDate}</span>
         </p>
 
-        {/* Registration status — 1 line, truncated */}
+        {/* Registration status — 1 line, truncated with rocket animation for urgent */}
         <p className={`text-[10px] font-semibold truncate ${
           status.tone === "urgent" ? "text-[#F84E00]" :
           status.tone === "muted" ? "text-[#727272]" :
           "text-[#BF72FF]"
         }`}>
+          {status.tone === "urgent" ? (
+            <span className="rocket-bounce inline-flex items-center gap-1">🚀</span>
+          ) : null}
           {status.text}
         </p>
 

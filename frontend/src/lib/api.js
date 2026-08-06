@@ -23,3 +23,8 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Search events by query - supports event names, categories, locations, and CLANN Event IDs
+export const searchEvents = (query) => {
+  return api.get("/events", { params: { q: query } });
+};
