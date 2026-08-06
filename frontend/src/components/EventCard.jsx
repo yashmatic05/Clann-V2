@@ -4,6 +4,7 @@ import { MapPin, Calendar, Copy, Bookmark, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
+import { registrationStatus, parseDate } from "@/lib/event-utils";
 
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
@@ -14,37 +15,6 @@ const categoryColor = (cat) => {
   if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
   if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-};
-
-const parseDate = (s) => {
-  if (!s) return null;
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const daysBetween = (a, b) => {
-  const MS = 24 * 60 * 60 * 1000;
-  const aa = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const bb = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  return Math.round((aa - bb) / MS);
-};
-
-const formatDate = (d) => {
-  if (!d) return null;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-};
-
-const registrationStatus = (event) => {
-  const today = new Date();
-  const eventDate = parseDate(event.event_date);
-  const deadline = parseDate(event.registration_deadline) || eventDate;
-  if (!deadline) return { text: "Date TBA", tone: "muted" };
-  const diff = daysBetween(deadline, today);
-  if (diff < 0) return { text: "Registration closed", tone: "muted" };
-  if (diff === 0) return { text: "Closes today", tone: "urgent" };
-  if (diff === 1) return { text: "1 Day Left", tone: "urgent" };
-  if (diff <= 7) return { text: `${diff} Days Left`, tone: "urgent" };
-  return { text: `Register before ${formatDate(deadline)}`, tone: "normal" };
 };
 
 const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
