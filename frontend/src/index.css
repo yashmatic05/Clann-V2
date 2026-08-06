@@ -117,3 +117,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes rocketBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.rocket-bounce {
+  animation: rocketBounce 1s ease-in-out infinite;
+  display: inline-block;
+}

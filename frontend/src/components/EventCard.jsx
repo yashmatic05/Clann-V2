@@ -191,7 +191,13 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
             status.tone === "muted" ? "text-[#727272]" :
             "text-[#BF72FF]"
           }`}>
-            {status.text}
+            {status.tone === "urgent" ? (
+              <>
+                <span className="rocket-bounce">🚀</span>{" "}{status.text}
+              </>
+            ) : (
+              status.text
+            )}
           </div>
 
           {/* CTAs */}
