@@ -12,15 +12,20 @@ const SectionHeading = ({ title }) => (
 
 // Horizontal scrollable row of compact cards — 16px left padding, 12px gap,
 // no visible scrollbar, smooth iOS touch scroll
-const HorizontalRow = ({ events }) => (
+const HorizontalRow = ({ events, savedIds }) => (
   <div className="mt-3 flex gap-3 overflow-x-auto scrollbar-hide [-webkit-overflow-scrolling:touch] px-4 pb-1">
     {events.map((ev, i) => (
-      <CompactEventCard key={ev.event_id} event={ev} index={i} />
+      <CompactEventCard
+        key={ev.event_id}
+        event={ev}
+        index={i}
+        initialSaved={savedIds ? savedIds.has(ev.event_id) : false}
+      />
     ))}
   </div>
 );
 
-const HorizontalSection = ({ title, events }) => {
+const HorizontalSection = ({ title, events, savedIds }) => {
   if (events.length === 0) return null;
   return (
     <section className="mt-8 overflow-x-hidden max-w-full">
@@ -28,7 +33,7 @@ const HorizontalSection = ({ title, events }) => {
         <SectionHeading title={title} />
       </div>
       <div className="overflow-hidden overflow-x-hidden max-w-full">
-        <HorizontalRow events={events} />
+        <HorizontalRow events={events} savedIds={savedIds} />
       </div>
     </section>
   );
@@ -159,7 +164,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
       {/* Upcoming Events horizontal scroll section */}
       {feed.upcoming.length > 0 && (
-        <HorizontalSection title="Upcoming Events" events={feed.upcoming} />
+        <HorizontalSection title="Upcoming Events" events={feed.upcoming} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
@@ -171,7 +176,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
       {/* Government Events horizontal scroll section */}
       {feed.govList.length > 0 && (
-        <HorizontalSection title="Government Events" events={feed.govList} />
+        <HorizontalSection title="Government Events" events={feed.govList} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
@@ -183,7 +188,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
       {/* Workshops horizontal scroll section */}
       {feed.workshops.length > 0 && (
-        <HorizontalSection title="Workshops" events={feed.workshops} />
+        <HorizontalSection title="Workshops" events={feed.workshops} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
@@ -195,7 +200,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
       {/* Hackathons horizontal scroll section */}
       {feed.hackathons.length > 0 && (
-        <HorizontalSection title="Hackathons & Competitions" events={feed.hackathons} />
+        <HorizontalSection title="Hackathons & Competitions" events={feed.hackathons} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
@@ -207,7 +212,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
       {/* Meetups horizontal scroll section */}
       {feed.meetups.length > 0 && (
-        <HorizontalSection title="Meetups" events={feed.meetups} />
+        <HorizontalSection title="Meetups" events={feed.meetups} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
@@ -219,7 +224,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
 
       {/* Custom homepage_category sections */}
       {feed.customSections.map((sec) => (
-        <HorizontalSection key={sec.title} title={sec.title} events={sec.events} />
+        <HorizontalSection key={sec.title} title={sec.title} events={sec.events} savedIds={savedIds} />
       ))}
 
       {/* Remaining events as stacked cards */}

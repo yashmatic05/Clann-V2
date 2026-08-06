@@ -149,15 +149,17 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
 
         <div className="p-4 md:p-5 flex-1 flex flex-col gap-2">
           {/* 1. Tags row */}
-          <div className="flex flex-wrap items-center gap-1.5" data-testid={`card-tags-${index}`}>
-            <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
-              {event.category}
-            </span>
-            <span className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${event.is_paid ? "border border-[#F84E00] text-[#F84E00]" : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40"}`}>
+          <div className="flex items-center justify-between gap-1.5" data-testid={`card-tags-${index}`}>
+            <div className="flex items-center gap-1.5">
+              <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+                {event.category}
+              </span>
+              <span className="rounded-md bg-[#280049] text-[#BF72FF] border border-[#46176D]/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                {event.mode}
+              </span>
+            </div>
+            <span className="rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
               {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
-            </span>
-            <span className="rounded-md bg-[#280049] text-[#BF72FF] border border-[#46176D]/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
-              {event.mode}
             </span>
           </div>
 

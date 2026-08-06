@@ -1,6 +1,6 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Calendar, ChevronRight } from "lucide-react";
+import { MapPin, Calendar, ChevronRight, Copy, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -55,9 +55,50 @@ const registrationStatus = (event) => {
  * title clamps at 2 lines, everything else truncates to 1 line.
  * Register behavior is identical to EventCard.
  */
-const CompactEventCard = ({ event, index = 0 }) => {
+const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [saved, setSaved] = useState(initialSaved);
+
+  useEffect(() => {
+    setSaved(initialSaved);
+  }, [initialSaved]);
+
+  const copyLink = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/event/${event.event_id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+
+  const toggleSave = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      toast.error("Please login to save events");
+      navigate("/auth");
+      return;
+    }
+    try {
+      if (saved) {
+        await api.delete(`/events/${event.event_id}/save`);
+        setSaved(false);
+        toast.success("Removed from saved");
+      } else {
+        await api.post(`/events/${event.event_id}/save`);
+        setSaved(true);
+        toast.success("Saved!");
+      }
+    } catch (err) {
+      console.error("[compact-card] save toggle failed", err);
+      toast.error("Something went wrong");
+    }
+  };
 
   const hasRegLink = !!(event.external_link && event.external_link.trim());
 
@@ -100,6 +141,29 @@ const CompactEventCard = ({ event, index = 0 }) => {
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
+        <div className="absolute top-2 right-2 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={copyLink}
+            aria-label="Copy link"
+            title="Copy link"
+            className="p-[6px] rounded-full bg-black/50 text-white transition-colors"
+          >
+            <Copy size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={toggleSave}
+            aria-label={saved ? "Remove from saved" : "Save event"}
+            title={saved ? "Remove from saved" : "Save event"}
+            className={`p-[6px] rounded-full bg-black/50 transition-colors ${saved ? "text-[#F84E00]" : "text-white"}`}
+          >
+            <Bookmark
+              size={12}
+              fill={saved ? "currentColor" : "none"}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Content — all lines clamped/truncated to keep the fixed 280px height */}
