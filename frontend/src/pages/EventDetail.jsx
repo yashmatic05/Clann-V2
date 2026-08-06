@@ -59,6 +59,14 @@ const EventDetail = () => {
     } catch { toast.error("Failed to copy"); }
   };
 
+  const copyEventId = async () => {
+    if (!event?.clann_event_id) return;
+    try {
+      await navigator.clipboard.writeText(event.clann_event_id);
+      toast.success("Event ID copied");
+    } catch { toast.error("Failed to copy"); }
+  };
+
   const toggleSave = async () => {
     if (!user) { toast.error("Please login to save events"); navigate("/auth"); return; }
     try {
@@ -100,6 +108,23 @@ const EventDetail = () => {
         <button data-testid="back-btn" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-[#BF72FF] hover:text-white text-sm mb-4 transition-colors">
           <ChevronLeft size={16}/> Back
         </button>
+
+        {/* Clann Event ID chip — top right, above the banner image */}
+        {event.clann_event_id && (
+          <div className="flex flex-col items-end mb-3">
+            <span className="text-[10px] text-[#727272] font-semibold tracking-widest mb-1">EVENT ID</span>
+            <button
+              type="button"
+              onClick={copyEventId}
+              data-testid="event-id-chip"
+              title="Copy event ID"
+              className="inline-flex items-center gap-1.5 bg-[#18002C] text-[#BF72FF] border border-[#46176D] text-[11px] font-semibold px-2.5 py-1 rounded-[20px] hover:border-[#BF72FF]/50 transition-colors"
+            >
+              {event.clann_event_id}
+              <Copy size={12} />
+            </button>
+          </div>
+        )}
 
         <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[#18002C]">
           <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
