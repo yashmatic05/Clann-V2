@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import re
 import secrets
+import string
 import logging
 import uuid
 import httpx
@@ -212,6 +213,31 @@ def escape_regex(value: str) -> str:
     return re.escape(value.strip())
 
 
+# Category code mapping used to build Clann event IDs (CLN-<CODE>-<RAND>).
+CATEGORY_CODES = {
+    "workshop": "WORK",
+    "hackathon": "HACK",
+    "meetup": "MEET",
+    "conference": "CONF",
+    "walk": "WALK",
+    "walks": "WALK",
+    "art & sketch": "ART",
+}
+
+EVENT_ID_ALPHABET = string.ascii_uppercase + string.digits  # A-Z, 0-9
+
+
+def generate_event_id(title: str, category: str) -> str:
+    """Generate a unique Clann event ID in the format CLN-[CATEGORY_CODE]-[4 RANDOM].
+
+    The 4 random characters are drawn from uppercase A-Z and digits 0-9.
+    Example outputs: CLN-WORK-3M9P, CLN-HACK-8YZK, CLN-CONF-2XPQ.
+    """
+    code = CATEGORY_CODES.get((category or "").strip().lower(), "EVNT")
+    suffix = "".join(secrets.choice(EVENT_ID_ALPHABET) for _ in range(4))
+    return f"CLN-{code}-{suffix}"
+
+
 def excel_serial_to_iso(value: str) -> Optional[str]:
     if not value or not re.fullmatch(r"\d+", str(value).strip()):
         return None
@@ -360,6 +386,40 @@ async def admin_stats(_=Depends(require_admin)):
         "total_organizers": total_organizers,
     }
 
+
+@api_router.get("/admin/backfill-event-ids")
+async def backfill_event_ids(_=Depends(require_admin)):
+    # Events that were created before clann_event_id existed (field missing or null).
+    missing_docs = []
+    async for doc in db.events.find(
+        {"clann_event_id": None},
+        {"_id": 0, "event_id": 1, "title": 1, "category": 1},
+    ):
+        missing_docs.append(doc)
+
+    # All IDs already in use, so backfilled IDs stay unique.
+    used_ids = set()
+    async for doc in db.events.find(
+        {"clann_event_id": {"$ne": None}},
+        {"_id": 0, "clann_event_id": 1},
+    ):
+        if doc.get("clann_event_id"):
+            used_ids.add(doc["clann_event_id"])
+
+    updated = 0
+    for doc in missing_docs:
+        candidate = generate_event_id(doc.get("title", ""), doc.get("category", ""))
+        while candidate in used_ids:
+            candidate = generate_event_id(doc.get("title", ""), doc.get("category", ""))
+        used_ids.add(candidate)
+        await db.events.update_one(
+            {"event_id": doc["event_id"]},
+            {"$set": {"clann_event_id": candidate}},
+        )
+        updated += 1
+
+    return {"updated_count": updated, "total_missing": len(missing_docs)}
+
 # -----------------------------
 # Homepage Categories
 # -----------------------------
@@ -425,6 +485,9 @@ async def list_events(
             {"title": {"$regex": safe_q, "$options": "i"}},
             {"short_description": {"$regex": safe_q, "$options": "i"}},
             {"full_description": {"$regex": safe_q, "$options": "i"}},
+            # Exact (case-insensitive) match on the Clann event ID, e.g.
+            # CLN-HACK-8YZK and cln-hack-8yzk both find the same event.
+            {"clann_event_id": {"$regex": f"^{safe_q}$", "$options": "i"}},
         ]
     docs = await db.events.find(query, {"_id": 0}).sort("event_date", 1).to_list(500)
     return docs
@@ -454,6 +517,13 @@ async def create_event(payload: EventCreate, _=Depends(require_admin)):
     event_id = f"evt_{uuid.uuid4().hex[:10]}"
     doc = payload.model_dump()
     doc["event_id"] = event_id
+    clann_event_id = generate_event_id(payload.title, payload.category)
+    # Retry on the (rare) chance the random suffix collides with an existing ID.
+    while await db.events.find_one(
+        {"clann_event_id": clann_event_id}, {"_id": 0, "clann_event_id": 1}
+    ):
+        clann_event_id = generate_event_id(payload.title, payload.category)
+    doc["clann_event_id"] = clann_event_id
     if doc.get("seats_left") is None:
         doc["seats_left"] = doc.get("total_seats", 0)
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
