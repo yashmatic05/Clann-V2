@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 
 const MAX = 300;
 
@@ -268,6 +269,14 @@ const Profile = () => {
             {user.role === "organizer" && (
               <Row Icon={Building2} label="Organisation" value={user.org_name || "—"}/>
             )}
+          </div>
+        </div>
+
+        {/* Notifications Section */}
+        <div className="space-y-3">
+          <h2 className="text-[16px] font-bold text-white">Notifications</h2>
+          <div className="mx-[-1rem] sm:mx-[-1.5rem]">
+            <WhatsAppReminderBar />
           </div>
         </div>
 

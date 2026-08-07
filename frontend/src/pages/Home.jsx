@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
@@ -15,6 +16,7 @@ const MODES = ["Both", "Online", "Offline"];
 
 const Home = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState([]);
   const [featured, setFeatured] = useState([]);
   const [govEvents, setGovEvents] = useState([]);

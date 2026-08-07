@@ -278,6 +278,10 @@ def _dedupe(items) -> list:
     return out
 
 
+def normalize_tag(tag):
+    return " ".join(word.capitalize() for word in tag.strip().split())
+
+
 def generate_event_tags(title: str, category: str, short_description: str):
     """Auto-generate `skills_tags` and `recommended_for_tags` via keyword matching.
 
@@ -347,6 +351,8 @@ def generate_event_tags(title: str, category: str, short_description: str):
         recs = ["All", "Curious Minds"]
     recommended_for_tags = _dedupe(recs)[:5]
 
+    skills_tags = [normalize_tag(tag) for tag in skills_tags]
+    recommended_for_tags = [normalize_tag(tag) for tag in recommended_for_tags]
     return skills_tags, recommended_for_tags
 
 # -----------------------------
@@ -556,6 +562,12 @@ async def delete_homepage_category(category_name: str, _=Depends(require_admin))
 # -----------------------------
 # Events
 # -----------------------------
+def normalize_clan_id(s):
+    if s is None:
+        return ""
+    return re.sub(r'[^A-Z0-9]', '', str(s).upper())
+
+
 @api_router.get("/events")
 async def list_events(
     category: Optional[str] = None,
@@ -564,6 +576,7 @@ async def list_events(
     q: Optional[str] = None,
     featured: Optional[bool] = None,
     is_government: Optional[bool] = None,
+    x_admin_token: Optional[str] = Header(None),
 ):
     query: dict = {}
     if category and category.lower() != "all":
@@ -577,24 +590,51 @@ async def list_events(
         query["featured"] = featured
     if is_government is not None:
         query["is_government"] = is_government
+
+    if not verify_admin_token(x_admin_token or ""):
+        today_str = datetime.utcnow().strftime("%Y-%m-%d")
+        query["event_date"] = {"$gte": today_str}
+
     if q:
-        safe_q = escape_regex(q)
-        query["$or"] = [
-            {"title": {"$regex": safe_q, "$options": "i"}},
-            {"short_description": {"$regex": safe_q, "$options": "i"}},
-            {"full_description": {"$regex": safe_q, "$options": "i"}},
-            # Exact (case-insensitive) match on the Clann event ID, e.g.
-            # CLN-HACK-8YZK and cln-hack-8yzk both find the same event.
-            {"clann_event_id": {"$regex": f"^{safe_q}$", "$options": "i"}},
-        ]
-    docs = await db.events.find(query, {"_id": 0}).sort("event_date", 1).to_list(500)
-    return docs
+        docs = await db.events.find(query, {"_id": 0}).sort("event_date", 1).to_list(500)
+        normalized_q = normalize_clan_id(q)
+        safe_q_pat = re.compile(escape_regex(q), re.IGNORECASE)
+        
+        filtered_docs = []
+        for doc in docs:
+            title = doc.get("title") or ""
+            short_desc = doc.get("short_description") or ""
+            full_desc = doc.get("full_description") or ""
+            clann_event_id = doc.get("clann_event_id") or ""
+            
+            normalized_db_id = normalize_clan_id(clann_event_id)
+            
+            matches_text = (
+                safe_q_pat.search(title) or 
+                safe_q_pat.search(short_desc) or 
+                safe_q_pat.search(full_desc)
+            )
+            
+            matches_clann_id = (
+                normalized_q != "" and normalized_db_id != "" and (normalized_q == normalized_db_id)
+            )
+            
+            if matches_text or matches_clann_id:
+                filtered_docs.append(doc)
+        return filtered_docs
+    else:
+        docs = await db.events.find(query, {"_id": 0}).sort("event_date", 1).to_list(500)
+        return docs
 
 @api_router.get("/events/{event_id}")
 async def get_event(event_id: str):
     doc = await db.events.find_one({"event_id": event_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Event not found")
+    if "skills" in doc and isinstance(doc["skills"], list):
+        doc["skills"] = [normalize_tag(tag) for tag in doc["skills"] if isinstance(tag, str)]
+    if "recommended_for" in doc and isinstance(doc["recommended_for"], list):
+        doc["recommended_for"] = [normalize_tag(tag) for tag in doc["recommended_for"] if isinstance(tag, str)]
     return doc
 
 

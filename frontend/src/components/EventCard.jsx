@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Calendar, Copy, Bookmark, ChevronRight } from "lucide-react";
+import { MapPin, Calendar, Share2, Bookmark, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -104,7 +104,7 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
               title="Copy link"
               className="p-2 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors"
             >
-              <Copy size={14} />
+              <Share2 size={14} />
             </button>
             <button
               onClick={toggleSave}
