@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,6 +15,7 @@ import Saved from "@/pages/Saved";
 import Profile from "@/pages/Profile";
 import CalendarPage from "@/pages/CalendarPage";
 import Search from "@/pages/Search";
+import EventsListPage from "@/pages/EventsListPage";
 
 const TOAST_OPTIONS = {
   style: {
@@ -24,6 +25,12 @@ const TOAST_OPTIONS = {
   },
 };
 
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 // Intercepts OAuth callback (session_id in URL hash) before normal routing
 function AppRouter() {
   const location = useLocation();
@@ -31,19 +38,23 @@ function AppRouter() {
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/event/:id" element={<EventDetail />} />
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/complete-profile" element={<CompleteProfile />} />
-      <Route path="/saved" element={<Saved />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/calendar" element={<CalendarPage />} />
-      <Route path="/search" element={<Search />} />
-      <Route path="/admin-clann-secret" element={<AdminLogin />} />
-      <Route path="/admin" element={<AdminPanel />} />
-      <Route path="*" element={<Home />} />
-    </Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/event/:id" element={<EventDetail />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
+        <Route path="/saved" element={<Saved />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/search" element={<Search />} />
+        <Route path="/events" element={<EventsListPage />} />
+        <Route path="/admin-clann-secret" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="*" element={<Home />} />
+      </Routes>
+    </>
   );
 }
 

@@ -1,14 +1,43 @@
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import CompactEventCard from "@/components/CompactEventCard";
 
 // Section heading: white bold 18px title left, orange "See All →" right
-const SectionHeading = ({ title }) => (
-  <div className="flex items-center justify-between">
-    <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
-    <span className="text-xs font-bold text-[#F84E00]">See All →</span>
-  </div>
-);
+const SectionHeading = ({ title }) => {
+  const navigate = useNavigate();
+
+  const handleSeeAll = () => {
+    const t = title.toLowerCase();
+    if (t.includes("upcoming")) {
+      navigate("/events?filter=upcoming");
+    } else if (t.includes("government")) {
+      navigate("/events?filter=government");
+    } else if (t.includes("workshop")) {
+      navigate("/events?filter=Workshop");
+    } else if (t.includes("hackathon")) {
+      navigate("/events?filter=Hackathon");
+    } else if (t.includes("meetup")) {
+      navigate("/events?filter=Meetup");
+    } else if (t.includes("art") || t.includes("sketch")) {
+      navigate("/events?filter=Art & Sketch");
+    } else {
+      navigate("/events?category=" + encodeURIComponent(title));
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between">
+      <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
+      <span
+        onClick={handleSeeAll}
+        className="text-xs font-bold text-[#F84E00] cursor-pointer"
+      >
+        See All →
+      </span>
+    </div>
+  );
+};
 
 // Horizontal scrollable row of compact cards — 16px left padding, 12px gap,
 // no visible scrollbar, smooth iOS touch scroll
@@ -119,7 +148,7 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] })
     const pair4 = take(events, 2);
 
     // 8. Hackathons horizontal scroll section
-    const hackathons = take(notShown(events.filter((ev) => ev.category === "Hackathon" || ev.category === "Hackathons & Competitions")), events.length);
+    const hackathons = take(notShown(events.filter((ev) => ev.category === "Workshop" || ev.category === "Hackathon" || ev.category === "Hackathons & Competitions")), events.length);
 
     // 9. 2 stacked full width EventCards
     const pair5 = take(events, 2);
