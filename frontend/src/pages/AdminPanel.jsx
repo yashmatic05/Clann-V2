@@ -202,7 +202,7 @@ const AdminPanel = () => {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
-  const [uploadStats, setUploadStats] = useState(null); // {ok, failed, total}
+  const [uploadStats, setUploadStats] = useState(null); // {ok, duplicate_count, failed, total}
   const [homepageCategories, setHomepageCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState(false);
@@ -425,7 +425,7 @@ const AdminPanel = () => {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[first], { defval: "", raw: true });
       if (rows.length === 0) { toast.error("Sheet is empty"); setUploading(false); return; }
 
-      let ok = 0, failed = 0;
+      let ok = 0, duplicate_count = 0, failed = 0;
       for (const raw of rows) {
         const payload = normalizeRow(raw);
         if (!payload.title || !payload.image_url || !payload.external_link || !payload.event_date) {
@@ -435,12 +435,18 @@ const AdminPanel = () => {
           await api.post("/events", payload);
           ok++;
         } catch (err) {
+          if (err.response?.status === 409) {
+            duplicate_count++;
+            continue;
+          }
           console.error("[admin] bulk row failed", err, raw);
           failed++;
         }
       }
-      setUploadStats({ ok, failed, total: rows.length });
-      if (ok > 0) toast.success(`${ok} event${ok > 1 ? "s" : ""} imported`);
+      setUploadStats({ ok, duplicate_count, failed, total: rows.length });
+      if (ok > 0 || duplicate_count > 0) {
+        toast.success(`${ok} event${ok !== 1 ? "s" : ""} imported${duplicate_count > 0 ? `, ${duplicate_count} duplicate${duplicate_count !== 1 ? "s" : ""} skipped` : ""}`);
+      }
       if (failed > 0) toast.error(`${failed} row${failed > 1 ? "s" : ""} could not be imported`);
       loadData();
     } catch (err) {
@@ -513,7 +519,8 @@ const AdminPanel = () => {
                     {uploadStats && (
                       <p className="mt-2 text-[11px]" data-testid="bulk-stats">
                         <span className="text-emerald-400 font-bold">{uploadStats.ok} imported</span>
-                        {uploadStats.failed > 0 && <span className="text-red-400 font-bold ml-2">· {uploadStats.failed} skipped</span>}
+                        {uploadStats.duplicate_count > 0 && <span className="text-amber-400 font-bold ml-2">· {uploadStats.duplicate_count} duplicates skipped</span>}
+                        {uploadStats.failed > 0 && <span className="text-red-400 font-bold ml-2">· {uploadStats.failed} failed</span>}
                         <span className="text-[#727272] ml-2">of {uploadStats.total} rows</span>
                       </p>
                     )}
