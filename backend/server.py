@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, Header, Cookie
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -491,6 +492,59 @@ async def admin_stats(_=Depends(require_admin)):
     }
 
 
+@api_router.get("/admin/remove-duplicates")
+async def remove_duplicate_events(_=Depends(require_admin)):
+    """Remove all but the oldest event for each normalized title."""
+    events = []
+    async for event in db.events.find({}):
+        events.append(event)
+    grouped = {}
+    for event in events:
+        normalized_title = normalize_event_title(event.get("title"))
+        grouped.setdefault(normalized_title, []).append(event)
+
+    removed_count = 0
+    kept_count = 0
+    duplicates_removed = []
+
+    def oldest_key(event):
+        created_at = event.get("created_at")
+        if isinstance(created_at, datetime):
+            timestamp = created_at
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
+        elif created_at:
+            try:
+                timestamp = datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
+                if timestamp.tzinfo is None:
+                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+            except (TypeError, ValueError):
+                timestamp = datetime.max.replace(tzinfo=timezone.utc)
+        else:
+            timestamp = datetime.max.replace(tzinfo=timezone.utc)
+        # ObjectId values sort by creation order. Stringifying also keeps this
+        # fallback safe for databases containing legacy non-ObjectId _ids.
+        return timestamp, str(event.get("_id", ""))
+
+    for normalized_title, group in grouped.items():
+        if len(group) == 1:
+            kept_count += 1
+            continue
+
+        group.sort(key=oldest_key)
+        kept_count += 1
+        duplicates_removed.append(normalized_title)
+        for duplicate in group[1:]:
+            result = await db.events.delete_one({"_id": duplicate["_id"]})
+            removed_count += result.deleted_count
+
+    return {
+        "removed_count": removed_count,
+        "kept_count": kept_count,
+        "duplicates_removed": duplicates_removed,
+    }
+
+
 @api_router.get("/admin/backfill-event-ids")
 async def backfill_event_ids(_=Depends(require_admin)):
     # Events that were created before clann_event_id existed (field missing or null).
@@ -566,6 +620,11 @@ def normalize_clan_id(s):
     if s is None:
         return ""
     return re.sub(r'[^A-Z0-9]', '', str(s).upper())
+
+
+def normalize_event_title(title) -> str:
+    """Return the canonical value used to identify duplicate event titles."""
+    return str(title or "").strip().lower()
 
 
 @api_router.get("/events")
@@ -652,6 +711,34 @@ async def related_events(event_id: str, limit: int = 3):
 
 @api_router.post("/events")
 async def create_event(payload: EventCreate, _=Depends(require_admin)):
+    normalized_title = normalize_event_title(payload.title)
+    existing = await db.events.find_one(
+        {
+            "$expr": {
+                "$eq": [
+                    {
+                        "$toLower": {
+                            "$trim": {
+                                "input": {"$ifNull": ["$title", ""]}
+                            }
+                        }
+                    },
+                    normalized_title,
+                ]
+            }
+        },
+        {"_id": 0, "event_id": 1},
+    )
+    if existing:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "error": "duplicate",
+                "message": "An event with this title already exists",
+                "existing_event_id": existing.get("event_id"),
+            },
+        )
+
     event_id = f"evt_{uuid.uuid4().hex[:10]}"
     doc = payload.model_dump()
     doc["event_id"] = event_id
