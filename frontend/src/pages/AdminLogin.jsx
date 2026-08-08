@@ -18,7 +18,7 @@ const AdminLogin = () => {
       localStorage.setItem("clann_admin_token", data.token);
       localStorage.setItem("clann_admin_email", data.email);
       toast.success("Admin authenticated");
-      navigate("/admin");
+      navigate("/admin-clann-secret/dashboard");
     } catch {
       toast.error("Invalid credentials");
     } finally { setLoading(false); }

@@ -34,7 +34,7 @@ Colors: Orange #F84E00 (CTA), Purple #280049/#46176D/#BF72FF, Card #18002C, BG #
 - `/auth` — Google Sign Up / Login tabs
 - `/complete-profile` — Attendee/Organizer profile completion after Google auth
 - `/saved`, `/profile`
-- `/admin-clann-secret` (login), `/admin` (dashboard + event CRUD + featured toggle)
+- `/admin-clann-secret` (login), `/admin-clann-secret/dashboard` (dashboard + event CRUD + featured toggle). NOTE: the panel moved from `/admin` because the deployment proxy (nginx) returns 403 Forbidden for the bare `/admin` path on hard refresh; `/admin` still redirects client-side to the new path.
 - Mobile bottom tab bar
 
 ## Testing

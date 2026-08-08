@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -51,7 +51,14 @@ function AppRouter() {
         <Route path="/search" element={<Search />} />
         <Route path="/events" element={<EventsListPage />} />
         <Route path="/admin-clann-secret" element={<AdminLogin />} />
-        <Route path="/admin" element={<AdminPanel />} />
+        {/* Admin panel lives under the secret namespace: the deployment proxy
+            (nginx) returns 403 for the bare /admin path on hard refresh, but
+            allows /admin-clann-secret/*. Keep this route unguessable. */}
+        <Route path="/admin-clann-secret/dashboard" element={<AdminPanel />} />
+        {/* Old path still works for in-app navigation/bookmarks via a
+            client-side redirect (a hard refresh on /admin is blocked upstream
+            before the app ever loads). */}
+        <Route path="/admin" element={<Navigate to="/admin-clann-secret/dashboard" replace />} />
         <Route path="*" element={<Home />} />
       </Routes>
     </>
