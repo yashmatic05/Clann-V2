@@ -8,6 +8,10 @@
  *
  * READ-ONLY: never modifies DB, never exposes private fields, _id, or credentials.
  * Production-safe: uses CLANN_BACKEND_URL via Netlify.env, no preview fallback.
+ *
+ * Every OG/Twitter tag is REPLACED (if already present in the shell) or inserted
+ * (if missing) so the final HTML contains exactly one of each — a stale default
+ * from index.html can never survive into an event response.
  */
 
 export default async (request, context) => {
@@ -44,6 +48,7 @@ export default async (request, context) => {
   // Resolve backend URL via dedicated Netlify Edge env variable
   // DO NOT fallback to Emergent/preview backend in production
   let backendUrl = "";
+  let backendStatus = "unset";
   try {
     if (typeof Netlify !== "undefined" && Netlify.env) {
       backendUrl = Netlify.env.get("CLANN_BACKEND_URL") || "";
@@ -67,6 +72,7 @@ export default async (request, context) => {
       validBackend = false;
     }
     if (validBackend) {
+      backendStatus = "ok";
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 2500);
@@ -81,13 +87,22 @@ export default async (request, context) => {
           if (data && typeof data === "object" && data.event_id) {
             event = data;
           }
+        } else {
+          // Log status only (event_id is public — it is the URL path). No secrets.
+          try {
+            console.warn(`[event-preview] backend HTTP ${resp.status} for event=${eventId}`);
+          } catch {}
         }
       } catch (_) {
         // Network/timeout/404 — fall through to generic OG
         // Do not expose error details
         event = null;
+        try {
+          console.warn(`[event-preview] backend fetch failed or timed out for event=${eventId}; serving generic OG`);
+        } catch {}
       }
     } else {
+      backendStatus = "invalid";
       // Invalid backend URL — log safe diagnostic server-side only
       try {
         console.warn("[event-preview] CLANN_BACKEND_URL is not a valid https URL");
@@ -195,42 +210,72 @@ export default async (request, context) => {
   const lowerImg = image.toLowerCase();
   if (lowerImg.endsWith(".png")) imageType = "image/png";
   else if (lowerImg.endsWith(".webp")) imageType = "image/webp";
-  // Unsplash and most event images are jpeg; keep generic dimensions
+  // Unsplash and most event images are jpeg; keep generic dimensions (hints only)
 
-  const ogTags = `
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="${escTitle}" />
-    <meta property="og:description" content="${escDesc}" />
-    <meta property="og:image" content="${escImage}" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:type" content="${escapeHtml(imageType)}" />
-    <meta property="og:url" content="${escUrl}" />
-    <meta property="og:site_name" content="${escSiteName}" />
-    <meta property="og:image:alt" content="${escImageAlt}" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${escTitle}" />
-    <meta name="twitter:description" content="${escDesc}" />
-    <meta name="twitter:image" content="${escImage}" />
-    <link rel="canonical" href="${escUrl}" />
-    <meta name="description" content="${escDesc}" />
-  `;
+  // Safe diagnostic for Netlify logs: event_id is public (it is the URL path).
+  try {
+    const imageState = event ? (image !== FALLBACK_IMAGE ? "event" : "none-or-rejected") : "n/a";
+    console.log(`[event-preview] event=${eventId} status=${event ? "resolved" : "fallback"} backend=${backendStatus} image=${imageState}`);
+  } catch {}
 
-  if (html.includes("<title>")) {
+  // ---- Inject metadata: REPLACE any existing tag, otherwise INSERT ----
+  const insertBeforeHeadClose = (html, tag) => {
+    if (html.includes("</head>")) return html.replace("</head>", `${tag}</head>`);
+    if (html.includes("<head>")) return html.replace("<head>", `<head>${tag}`);
+    return tag + html;
+  };
+
+  // Replace the first <meta attribute="value" ...> (attribute order agnostic,
+  // single or double quotes) or insert the tag before </head> when absent.
+  // NOTE: must test() before replace() — when the new tag is byte-identical to
+  // the existing one (e.g. fallback values equal the index.html defaults),
+  // replace() returns the same string and must not be mistaken for "not found".
+  const setMeta = (html, attr, attrVal, tag) => {
+    const safeVal = attrVal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`<meta[^>]*\\b${attr}=["']${safeVal}["'][^>]*>`, "i");
+    if (re.test(html)) return html.replace(re, tag);
+    return insertBeforeHeadClose(html, tag);
+  };
+
+  const setCanonical = (html, tag) => {
+    const re = /<link[^>]*\brel=["']canonical["'][^>]*>/i;
+    if (re.test(html)) return html.replace(re, tag);
+    return insertBeforeHeadClose(html, tag);
+  };
+
+  // <title> — replace when present, otherwise insert.
+  if (/<title>/i.test(html)) {
     html = html.replace(/<title>.*?<\/title>/is, `<title>${escTitle}</title>`);
+  } else {
+    html = insertBeforeHeadClose(html, `<title>${escTitle}</title>`);
   }
 
-  if (html.includes("</head>")) {
-    html = html.replace("</head>", `${ogTags}</head>`);
-  } else if (html.includes("<head>")) {
-    html = html.replace("<head>", `<head>${ogTags}`);
-  } else {
-    html = ogTags + html;
-  }
+  // Replace the shell's meta description — never let a stale generic
+  // description (e.g. "A product of emergent.sh") survive into event HTML.
+  html = setMeta(html, "name", "description", `<meta name="description" content="${escDesc}" />`);
+  html = setMeta(html, "property", "og:type", `<meta property="og:type" content="website" />`);
+  html = setMeta(html, "property", "og:title", `<meta property="og:title" content="${escTitle}" />`);
+  html = setMeta(html, "property", "og:description", `<meta property="og:description" content="${escDesc}" />`);
+  html = setMeta(html, "property", "og:image", `<meta property="og:image" content="${escImage}" />`);
+  html = setMeta(html, "property", "og:image:width", `<meta property="og:image:width" content="1200" />`);
+  html = setMeta(html, "property", "og:image:height", `<meta property="og:image:height" content="630" />`);
+  html = setMeta(html, "property", "og:image:type", `<meta property="og:image:type" content="${escapeHtml(imageType)}" />`);
+  html = setMeta(html, "property", "og:image:alt", `<meta property="og:image:alt" content="${escImageAlt}" />`);
+  html = setMeta(html, "property", "og:url", `<meta property="og:url" content="${escUrl}" />`);
+  html = setMeta(html, "property", "og:site_name", `<meta property="og:site_name" content="${escSiteName}" />`);
+  html = setMeta(html, "name", "twitter:card", `<meta name="twitter:card" content="summary_large_image" />`);
+  html = setMeta(html, "name", "twitter:title", `<meta name="twitter:title" content="${escTitle}" />`);
+  html = setMeta(html, "name", "twitter:description", `<meta name="twitter:description" content="${escDesc}" />`);
+  html = setMeta(html, "name", "twitter:image", `<meta name="twitter:image" content="${escImage}" />`);
+  html = setCanonical(html, `<link rel="canonical" href="${escUrl}" />`);
 
   const modified = new Response(html, response);
   modified.headers.set("Content-Type", "text/html; charset=utf-8");
-  modified.headers.set("Cache-Control", "public, max-age=300, s-maxage=600, must-revalidate");
+  // Dynamic per-event metadata must not be pinned by shared caches. Netlify does
+  // not cache Edge Function responses unless explicitly opted in; removing
+  // s-maxage also prevents any other intermediary from holding a generic
+  // fallback response for 10 minutes.
+  modified.headers.set("Cache-Control", "public, max-age=300, must-revalidate");
   modified.headers.delete("x-powered-by");
   // Do not expose backend URL or env values
   return modified;

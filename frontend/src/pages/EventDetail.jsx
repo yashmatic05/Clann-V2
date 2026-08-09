@@ -127,9 +127,26 @@ const EventDetail = () => {
   }, [user, id]);
 
   const share = async () => {
+    const url = window.location.href;
+    const shareText = "🎯 Found this event on Clann!\n\nCheck it out 👇";
+    // Prefer the native share sheet (WhatsApp, Messages, etc.) when available.
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: event?.title || "Clann event",
+          text: shareText,
+          url,
+        });
+        return;
+      } catch (err) {
+        // User dismissed the share sheet — not an error worth reporting.
+        if (err && err.name === "AbortError") return;
+        // Any other failure (e.g. share not permitted) — fall back to clipboard.
+      }
+    }
     try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success("Link copied!");
+      await navigator.clipboard.writeText(`🎯 Found this event on Clann!\n\n${event?.title || ""}\n\nCheck it out 👇\n${url}`);
+      toast.success("Share message copied!");
     } catch { toast.error("Failed to copy"); }
   };
 
@@ -206,7 +223,7 @@ const EventDetail = () => {
           <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D]/90 via-transparent to-transparent" />
           <div className="absolute top-4 right-4 flex gap-2">
-            <button data-testid="detail-share" onClick={share} title="Copy link" className="p-2.5 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors">
+            <button data-testid="detail-share" onClick={share} title="Share event" className="p-2.5 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors">
               <Share2 size={16}/>
             </button>
             <button data-testid="detail-save" onClick={toggleSave} className={`p-2.5 rounded-full backdrop-blur transition-colors ${saved ? "bg-[#F84E00] text-white" : "bg-black/50 hover:bg-[#46176D] text-white"}`}>
