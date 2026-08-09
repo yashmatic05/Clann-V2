@@ -545,6 +545,19 @@ async def remove_duplicate_events(_=Depends(require_admin)):
     }
 
 
+@api_router.get("/admin/events/export")
+async def export_all_events(_=Depends(require_admin)):
+    """
+    Admin-only export of the complete event collection.
+    Returns ALL events without pagination or date filtering.
+    READ-ONLY — no modifications, no duplicate cleanup.
+    """
+    docs = []
+    async for doc in db.events.find({}, {"_id": 0}).sort("event_date", 1):
+        docs.append(doc)
+    return docs
+
+
 @api_router.get("/admin/backfill-event-ids")
 async def backfill_event_ids(_=Depends(require_admin)):
     # Events that were created before clann_event_id existed (field missing or null).

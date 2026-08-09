@@ -4,6 +4,11 @@
 # browser refresh and direct URL navigation serve the app instead of a
 # Netlify 404 page. Build settings are unchanged (managed in Netlify UI).
 
+# Dynamic Open Graph previews for event sharing — must run BEFORE SPA fallback
+[[edge_functions]]
+  path = "/event/*"
+  function = "event-preview"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

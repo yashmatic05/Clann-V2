@@ -11,38 +11,17 @@ import Footer from "@/components/Footer";
 import MobileEventFeed from "@/components/MobileEventFeed";
 import { useAuth } from "@/context/AuthContext";
 import { Landmark } from "lucide-react";
-import { daysBetween, parseDate } from "@/lib/event-utils";
 
 const MODES = ["Both", "Online", "Offline"];
 
 /**
- * Featured hero-banner selection.
- * Shows at most 6 banners that are most relevant to college students,
- * with registration deadlines within the next 7 days, capped at 4 free + 2
- * paid events. Admin-flagged `featured` events are prioritized first, then
- * remaining upcoming events fill the mix. Never shows the whole collection.
+ * Featured hero-banner selection — admin-controlled (restored original behavior).
+ * The admin's Featured Yes/No toggle in AdminPanel is the single source of truth.
+ * No automatic rules: no banner limit, no free/paid ratio,
+ * no student-relevance filter, no deadline window, no auto top-up.
  */
 export const selectFeaturedBanners = (allEvents) => {
-  const isStudentRelevant = (ev) => {
-    const recs = (ev.recommended_for || []).map((t) => String(t).toLowerCase());
-    if (recs.length === 0) return false;
-    return recs.some((t) => t === "all" || /student|college|university|campus/.test(t));
-  };
-  const deadlineWithinWeek = (ev) => {
-    const deadline = parseDate(ev.registration_deadline) || parseDate(ev.event_date);
-    if (!deadline) return false;
-    const diff = daysBetween(deadline, new Date());
-    return diff >= 0 && diff <= 7;
-  };
-  const sorted = (allEvents || [])
-    .filter((ev) => !ev.is_government && isStudentRelevant(ev) && deadlineWithinWeek(ev))
-    .sort((a, b) => {
-      if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
-      return String(a.registration_deadline || "").localeCompare(String(b.registration_deadline || ""));
-    });
-  const free = sorted.filter((e) => !e.is_paid).slice(0, 4);
-  const paid = sorted.filter((e) => e.is_paid).slice(0, 2);
-  return [...free, ...paid].slice(0, 6);
+  return (allEvents || []).filter((ev) => ev.featured === true);
 };
 
 const Home = () => {
