@@ -11,14 +11,45 @@ import Footer from "@/components/Footer";
 import MobileEventFeed from "@/components/MobileEventFeed";
 import { useAuth } from "@/context/AuthContext";
 import { Landmark } from "lucide-react";
+import { daysBetween, parseDate } from "@/lib/event-utils";
 
 const MODES = ["Both", "Online", "Offline"];
+
+/**
+ * Featured hero-banner selection.
+ * Shows at most 6 banners that are most relevant to college students,
+ * with registration deadlines within the next 7 days, capped at 4 free + 2
+ * paid events. Admin-flagged `featured` events are prioritized first, then
+ * remaining upcoming events fill the mix. Never shows the whole collection.
+ */
+export const selectFeaturedBanners = (allEvents) => {
+  const isStudentRelevant = (ev) => {
+    const recs = (ev.recommended_for || []).map((t) => String(t).toLowerCase());
+    if (recs.length === 0) return false;
+    return recs.some((t) => t === "all" || /student|college|university|campus/.test(t));
+  };
+  const deadlineWithinWeek = (ev) => {
+    const deadline = parseDate(ev.registration_deadline) || parseDate(ev.event_date);
+    if (!deadline) return false;
+    const diff = daysBetween(deadline, new Date());
+    return diff >= 0 && diff <= 7;
+  };
+  const sorted = (allEvents || [])
+    .filter((ev) => !ev.is_government && isStudentRelevant(ev) && deadlineWithinWeek(ev))
+    .sort((a, b) => {
+      if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
+      return String(a.registration_deadline || "").localeCompare(String(b.registration_deadline || ""));
+    });
+  const free = sorted.filter((e) => !e.is_paid).slice(0, 4);
+  const paid = sorted.filter((e) => e.is_paid).slice(0, 2);
+  return [...free, ...paid].slice(0, 6);
+};
 
 const Home = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [events, setEvents] = useState([]);
-  const [featured, setFeatured] = useState([]);
+  const [bannerPool, setBannerPool] = useState([]);
   const [govEvents, setGovEvents] = useState([]);
   const [savedIds, setSavedIds] = useState(new Set());
   const [category, setCategory] = useState("All");
@@ -28,9 +59,9 @@ const Home = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/events", { params: { featured: true } });
-        setFeatured(data);
-      } catch (err) { console.error("[home] load featured failed", err); }
+        const { data } = await api.get("/events");
+        setBannerPool(data.filter((e) => !e.is_government));
+      } catch (err) { console.error("[home] load banner pool failed", err); }
     })();
   }, []);
 
@@ -59,21 +90,34 @@ const Home = () => {
       const params = {};
       const cat = chipToCategory(category);
       if (cat) params.category = cat;
-      if (mode !== "Both") params.mode = mode;
       try {
         const { data } = await api.get("/events", { params });
         setEvents(data.filter((e) => !e.is_government));
       } catch (err) { console.error("[home] load events failed", err); }
       setLoading(false);
     })();
-  }, [category, mode]);
+  }, [category]);
 
-  const filteredEvents = useMemo(() => events, [events]);
+  const featuredBanners = useMemo(() => selectFeaturedBanners(bannerPool), [bannerPool]);
+
+  // Live per-tab counts (non-government events, current category)
+  const modeCounts = useMemo(() => {
+    const online = events.filter((e) => e.mode === "Online" || e.mode === "Both");
+    const offline = events.filter((e) => e.mode === "Offline" || e.mode === "Both");
+    return { both: events.length, online: online.length, offline: offline.length };
+  }, [events]);
+
+  const filteredEvents = useMemo(() => {
+    if (mode === "Online") return events.filter((e) => e.mode === "Online" || e.mode === "Both");
+    if (mode === "Offline") return events.filter((e) => e.mode === "Offline" || e.mode === "Both");
+    return events;
+  }, [events, mode]);
+
   const isAll = category === "All";
 
   const homepageSections = useMemo(() => {
     const map = new Map();
-    for (const ev of events) {
+    for (const ev of filteredEvents) {
       const cat = (ev.homepage_category || "").trim();
       if (!cat) continue;
       if (!map.has(cat)) map.set(cat, []);
@@ -87,16 +131,16 @@ const Home = () => {
     }
     sections.sort((a, b) => a.title.localeCompare(b.title));
     return sections;
-  }, [events]);
+  }, [filteredEvents]);
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6 overflow-x-hidden max-w-full">
       <Navbar />
-      <HeroBanner events={featured} />
+      <HeroBanner events={featuredBanners} />
       <WhatsAppReminderBar testid="whatsapp-bar-home" />
 
-      {/* Row 1 — Online / Offline mode toggle */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 flex items-center justify-between">
+      {/* Row 1 — Online / Offline mode toggle with live event counts */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div className="inline-flex bg-[#18002C] border border-[#46176D]/40 rounded-full p-1" data-testid="mode-toggle">
           {MODES.map((m) => (
             <button
@@ -107,13 +151,10 @@ const Home = () => {
                 mode === m ? "bg-[#F84E00] text-white" : "text-[#BF72FF] hover:text-white"
               }`}
             >
-              {m}
+              {m} ({modeCounts[m.toLowerCase()]})
             </button>
           ))}
         </div>
-        <span className="text-xs text-[#727272]" data-testid="results-count">
-          {filteredEvents.length} events
-        </span>
       </div>
 
       {/* Row 2 — Category chips */}
@@ -177,7 +218,7 @@ const Home = () => {
 
       {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
       {isAll && !loading && (
-        <MobileEventFeed events={events} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} />
+        <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} />
       )}
 
       <Footer />

@@ -4,7 +4,7 @@ import { MapPin, Calendar, ChevronRight, Copy, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus, parseDate } from "@/lib/event-utils";
+import { registrationStatus, parseDate, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 
 // Same per-category chip colors as EventCard (kept local — EventCard must stay untouched)
 const categoryColor = (cat) => {
@@ -147,8 +147,8 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
               {event.mode}
             </span>
           </div>
-          <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${event.is_paid ? "border border-[#F84E00] text-[#F84E00]" : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40"}`}>
-            {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
+          <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${priceBadgeClass(event)}`}>
+            {priceLabel(event)}
           </span>
         </div>
 

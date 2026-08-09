@@ -8,7 +8,7 @@ import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight, ChevronL
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus } from "@/lib/event-utils";
+import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 
 const categoryColor = (cat) => {
@@ -223,8 +223,8 @@ const EventDetail = () => {
             <span className="bg-[#280049] text-[#BF72FF] rounded-lg px-3 py-1 text-xs font-bold uppercase tracking-wider">{event.mode}</span>
           </div>
           <div>
-            <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 rounded-lg px-3 py-1 text-xs font-bold">
-              {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
+            <span data-testid="detail-price" className={`rounded-lg px-3 py-1 text-xs font-bold ${priceBadgeClass(event)}`}>
+              {priceLabel(event)}
             </span>
           </div>
         </div>

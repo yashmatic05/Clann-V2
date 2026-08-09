@@ -30,3 +30,29 @@ export const registrationStatus = (event) => {
   if (diff <= 7) return { text: `${diff} Days Left`, tone: "urgent" };
   return { text: `Register before ${formatDeadlineDate(deadline)}`, tone: "normal" };
 };
+
+/**
+ * Standardized pricing badge label.
+ * Free events → "Free". Paid events → the amount with the ₹ symbol always
+ * shown (e.g. "₹999"), normalizing any existing ₹/Rs./INR prefix or "/-" suffix.
+ */
+export const priceLabel = (event) => {
+  if (!event || !event.is_paid) return "Free";
+  let raw = String(event.price || "").trim();
+  if (!raw) return "Paid";
+  raw = raw
+    .replace(/^(₹|Rs\.?|INR)\s*/i, "")
+    .replace(/\/-\s*$/, "")
+    .trim();
+  return raw ? `₹${raw}` : "Paid";
+};
+
+/**
+ * Standardized pricing badge colors.
+ * Free → green tag. Paid → orange tag.
+ */
+export const priceBadgeClass = (event) => {
+  return event && event.is_paid
+    ? "bg-[#F84E00]/15 text-[#F84E00] border border-[#F84E00]/50"
+    : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40";
+};

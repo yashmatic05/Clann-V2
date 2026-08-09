@@ -20,9 +20,8 @@ const Auth = () => {
         <ChevronLeft size={16}/> Back to home
       </button>
 
-      <Link to="/" className="mt-6 mb-6 flex items-center gap-2" data-testid="auth-brand">
+      <Link to="/" className="mt-6 mb-6 flex items-center justify-center" data-testid="auth-brand">
         <img src="/brand/clann-logo.png" alt="Clann" className="h-10 w-auto" />
-        <span className="font-black text-2xl tracking-tighter text-white">Clann</span>
       </Link>
       <p className="text-sm text-[#BF72FF] font-bold tracking-widest uppercase mb-6">Explore More. Upskill More.</p>
 

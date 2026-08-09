@@ -4,7 +4,7 @@ import { MapPin, Calendar, Share2, Bookmark, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus, parseDate } from "@/lib/event-utils";
+import { registrationStatus, parseDate, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
@@ -128,8 +128,8 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
                 {event.mode}
               </span>
             </div>
-            <span className="rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap">
-              {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
+            <span data-testid={`card-price-${index}`} className={`rounded-md px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${priceBadgeClass(event)}`}>
+              {priceLabel(event)}
             </span>
           </div>
 

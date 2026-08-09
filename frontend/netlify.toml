@@ -1,0 +1,10 @@
+# Netlify SPA fallback configuration for CLANN (Create React App).
+# All client-side routes handled by React Router (/, /profile, /events,
+# /calendar, /auth, /admin-clann-secret, ...) fall back to index.html so
+# browser refresh and direct URL navigation serve the app instead of a
+# Netlify 404 page. Build settings are unchanged (managed in Netlify UI).
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
