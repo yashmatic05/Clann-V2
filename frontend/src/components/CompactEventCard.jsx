@@ -33,15 +33,29 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
     setSaved(initialSaved);
   }, [initialSaved]);
 
+  // Same share behavior as EventDetail/EventCard: native share sheet
+  // (Web Share API) when available, otherwise copy the branded message —
+  // not the raw URL — to the clipboard. Button, icon and layout unchanged.
   const copyLink = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     const url = `${window.location.origin}/event/${event.event_id}`;
+    const shareText = "🎯 Found this event on Clann!\n\nCheck it out 👇";
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: event.title || "Clann event", text: shareText, url });
+        return;
+      } catch (err) {
+        // User dismissed the share sheet — nothing to do.
+        if (err && err.name === "AbortError") return;
+        // Any other failure — fall back to clipboard below.
+      }
+    }
     try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
+      await navigator.clipboard.writeText(`🎯 Found this event on Clann!\n\n${event.title || ""}\n\nCheck it out 👇\n${url}`);
+      toast.success("Share message copied!");
     } catch {
-      toast.error("Could not copy link");
+      toast.error("Failed to copy");
     }
   };
 
