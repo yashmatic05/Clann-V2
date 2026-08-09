@@ -10,6 +10,7 @@ import {
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
+import { priceLabel, priceBadgeClass } from "@/lib/event-utils";
 
 const MAX = 300;
 
@@ -136,12 +137,12 @@ const SavedEventCard = ({ event, index = 0, onUnsave }) => {
 
         {/* Content */}
         <div className="flex-1 min-h-0 p-3 flex flex-col gap-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-between gap-1.5">
             <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
               {event.category}
             </span>
-            <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${event.is_paid ? "border border-[#F84E00] text-[#F84E00]" : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40"}`}>
-              {event.is_paid ? `Paid ${event.price || ""}`.trim() : "Free"}
+            <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${priceBadgeClass(event)}`}>
+              {priceLabel(event)}
             </span>
           </div>
 
