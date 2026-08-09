@@ -260,6 +260,7 @@ const AdminPanel = () => {
   const [generatingTags, setGeneratingTags] = useState(false);
   const [uploadStats, setUploadStats] = useState(null); // {ok, duplicate_count, failed, total}
   const [exporting, setExporting] = useState(null); // 'excel' | 'csv' | null
+  const [deletingAll, setDeletingAll] = useState(false);
   const [homepageCategories, setHomepageCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState(false);
@@ -377,6 +378,18 @@ const AdminPanel = () => {
     if (!window.confirm("Delete this event?")) return;
     try { await api.delete(`/events/${id}`); toast.success("Deleted"); loadData(); }
     catch { toast.error("Delete failed"); }
+  };
+
+  const removeAll = async () => {
+    if (deletingAll || events.length === 0) return;
+    if (!window.confirm(`Delete ALL ${events.length} events? This cannot be undone.`)) return;
+    setDeletingAll(true);
+    try {
+      const { data } = await api.delete("/events");
+      toast.success(`Deleted ${data?.deleted ?? "all"} events`);
+      loadData();
+    } catch { toast.error("Delete all failed"); }
+    setDeletingAll(false);
   };
 
   const startEditCategory = (c) => {
@@ -723,9 +736,21 @@ const AdminPanel = () => {
 
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-black text-white tracking-tight">Events</h2>
-                <button data-testid="add-event-btn" onClick={openAdd} className="bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-5 py-2.5 text-sm font-bold inline-flex items-center gap-1.5 transition-colors">
-                  <Plus size={14}/> Add New Event
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    data-testid="delete-all-events-btn"
+                    onClick={removeAll}
+                    disabled={deletingAll || events.length === 0}
+                    title="Delete all events"
+                    className="border border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-full px-5 py-2.5 text-sm font-bold inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    {deletingAll ? <Loader2 size={14} className="animate-spin"/> : <Trash2 size={14}/>}
+                    {deletingAll ? "Deleting..." : "Delete All"}
+                  </button>
+                  <button data-testid="add-event-btn" onClick={openAdd} className="bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-5 py-2.5 text-sm font-bold inline-flex items-center gap-1.5 transition-colors">
+                    <Plus size={14}/> Add New Event
+                  </button>
+                </div>
               </div>
 
               <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden">
