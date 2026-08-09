@@ -29,6 +29,34 @@ const TEMPLATE_HEADERS = [
   "featured", "is_government",
 ];
 
+const EXPORT_HEADERS = [
+  "event_id",
+  "clann_event_id",
+  "title",
+  "category",
+  "mode",
+  "short_description",
+  "full_description",
+  "image_url",
+  "location",
+  "city",
+  "event_date",
+  "start_time",
+  "end_time",
+  "registration_deadline",
+  "is_paid",
+  "price",
+  "total_seats",
+  "seats_left",
+  "external_link",
+  "skills",
+  "recommended_for",
+  "featured",
+  "is_government",
+  "homepage_category",
+  "created_at",
+];
+
 const truthy = (v) => {
   if (typeof v === "boolean") return v;
   if (v === undefined || v === null) return false;
@@ -122,6 +150,34 @@ const normalizeRow = (row) => {
   };
 };
 
+const toExportRow = (ev) => ({
+  event_id: ev.event_id || "",
+  clann_event_id: ev.clann_event_id || "",
+  title: ev.title || "",
+  category: ev.category || "",
+  mode: ev.mode || "",
+  short_description: ev.short_description || "",
+  full_description: ev.full_description || "",
+  image_url: ev.image_url || "",
+  location: ev.location || "",
+  city: ev.city || "",
+  event_date: ev.event_date || "",
+  start_time: ev.start_time || "",
+  end_time: ev.end_time || "",
+  registration_deadline: ev.registration_deadline || "",
+  is_paid: !!ev.is_paid,
+  price: ev.price != null ? String(ev.price) : "",
+  total_seats: ev.total_seats ?? "",
+  seats_left: ev.seats_left ?? "",
+  external_link: ev.external_link || "",
+  skills: Array.isArray(ev.skills) ? ev.skills.join(" | ") : (ev.skills || ""),
+  recommended_for: Array.isArray(ev.recommended_for) ? ev.recommended_for.join(" | ") : (ev.recommended_for || ""),
+  featured: !!ev.featured,
+  is_government: !!ev.is_government,
+  homepage_category: ev.homepage_category || "",
+  created_at: ev.created_at || "",
+});
+
 // Client-side mirror of backend generate_event_tags — used in the create form
 // where the event does not yet exist to call the generate-tags endpoint.
 const containsAny = (text, keywords) => {
@@ -203,6 +259,7 @@ const AdminPanel = () => {
   const [uploading, setUploading] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
   const [uploadStats, setUploadStats] = useState(null); // {ok, duplicate_count, failed, total}
+  const [exporting, setExporting] = useState(null); // 'excel' | 'csv' | null
   const [homepageCategories, setHomepageCategories] = useState([]);
   const [catLoading, setCatLoading] = useState(false);
   const [catError, setCatError] = useState(false);
@@ -462,6 +519,80 @@ const AdminPanel = () => {
     if (file) processFile(file);
   };
 
+  const triggerDownload = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const fetchAllEventsForExport = async () => {
+    try {
+      const { data } = await api.get("/admin/events/export");
+      return data || [];
+    } catch (err) {
+      if (err.response?.status === 401) throw err;
+      const { data } = await api.get("/events");
+      return data || [];
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (exporting) return;
+    setExporting("excel");
+    try {
+      const allEvents = await fetchAllEventsForExport();
+      if (!allEvents || allEvents.length === 0) {
+        toast.error("No events available to export.");
+        return;
+      }
+      const rows = allEvents.map(toExportRow);
+      const ws = XLSX.utils.json_to_sheet(rows, { header: EXPORT_HEADERS });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Events");
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `CLANN_All_Events_${dateStr}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      toast.success(`${allEvents.length} events exported successfully`);
+    } catch (err) {
+      console.error("[admin] export excel failed", err);
+      if (err.response?.status === 401) toast.error("Admin authentication required");
+      else toast.error("Failed to export events. Please try again.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    if (exporting) return;
+    setExporting("csv");
+    try {
+      const allEvents = await fetchAllEventsForExport();
+      if (!allEvents || allEvents.length === 0) {
+        toast.error("No events available to export.");
+        return;
+      }
+      const rows = allEvents.map(toExportRow);
+      const ws = XLSX.utils.json_to_sheet(rows, { header: EXPORT_HEADERS });
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const filename = `CLANN_All_Events_${dateStr}.csv`;
+      triggerDownload(blob, filename);
+      toast.success(`${allEvents.length} events exported successfully`);
+    } catch (err) {
+      console.error("[admin] export csv failed", err);
+      if (err.response?.status === 401) toast.error("Admin authentication required");
+      else toast.error("Failed to export events. Please try again.");
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0D0D0D]">
       <header className="sticky top-0 z-30 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-[#280049]">
@@ -550,6 +681,43 @@ const AdminPanel = () => {
                       onChange={(e) => { const f = e.target.files?.[0]; if (f) processFile(f); e.target.value = ""; }}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Export all events — admin-only, complete database */}
+              <div
+                data-testid="export-section"
+                className="mb-6 rounded-2xl border border-[#46176D]/40 bg-[#18002C] p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#BF72FF] shrink-0">
+                    <Download size={18} />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold text-sm">Export all events</h3>
+                    <p className="text-xs text-[#727272] mt-1">Download your complete event database as a single spreadsheet.</p>
+                    <p className="text-[10px] text-[#727272] mt-1">Includes all events in the database — not just the current view.</p>
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0 self-stretch md:self-auto">
+                  <button
+                    data-testid="export-excel-btn"
+                    onClick={handleExportExcel}
+                    disabled={!!exporting}
+                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-white hover:bg-[#FFFBE9] disabled:opacity-60 text-[#0D0D0D] rounded-full px-5 py-2.5 text-xs font-bold transition-colors"
+                  >
+                    {exporting === "excel" ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
+                    {exporting === "excel" ? "Exporting..." : "Export Excel"}
+                  </button>
+                  <button
+                    data-testid="export-csv-btn"
+                    onClick={handleExportCSV}
+                    disabled={!!exporting}
+                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 border border-[#46176D] text-[#BF72FF] hover:bg-[#280049] hover:text-white disabled:opacity-60 rounded-full px-5 py-2.5 text-xs font-bold transition-colors"
+                  >
+                    {exporting === "csv" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                    {exporting === "csv" ? "Exporting..." : "Export CSV"}
+                  </button>
                 </div>
               </div>
 
