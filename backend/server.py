@@ -799,6 +799,13 @@ async def delete_event(event_id: str, _=Depends(require_admin)):
         raise HTTPException(status_code=404, detail="Event not found")
     return {"ok": True}
 
+@api_router.delete("/events")
+async def delete_all_events(_=Depends(require_admin)):
+    # One-click wipe of every event — equivalent to deleting each event
+    # individually via DELETE /events/{event_id}. Admin-only.
+    res = await db.events.delete_many({})
+    return {"ok": True, "deleted": res.deleted_count}
+
 
 @api_router.post("/admin/events/{event_id}/generate-tags")
 async def admin_generate_tags(event_id: str, _=Depends(require_admin)):
