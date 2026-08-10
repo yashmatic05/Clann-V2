@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
-import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight, ChevronLeft } from "lucide-react";
+import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -197,38 +197,39 @@ const EventDetail = () => {
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
       <Navbar />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        <button data-testid="back-btn" onClick={() => navigate(-1)} className="inline-flex items-center gap-1 text-[#BF72FF] hover:text-white text-sm mb-4 transition-colors">
-          <ChevronLeft size={16}/> Back
-        </button>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 md:pb-0">
+        {/* Banner container — relative anchor for the Clann Event ID chip.
+            The chip is absolutely positioned so it floats 16px above the banner
+            image (never overlapping the image content or the share/save buttons):
+            top-right on mobile, top-left on desktop. */}
+        <div className={`relative${event.clann_event_id ? " pt-[78px]" : ""}`}>
+          {event.clann_event_id && (
+            <div className="absolute top-4 right-0 flex flex-col items-end md:right-auto md:left-0 md:items-start">
+              <span className="text-[10px] text-[#727272] font-semibold tracking-widest mb-1">EVENT ID</span>
+              <button
+                type="button"
+                onClick={copyEventId}
+                data-testid="event-id-chip"
+                title="Copy event ID"
+                className="inline-flex items-center gap-1.5 bg-[#18002C] text-[#BF72FF] border border-[#46176D] text-[11px] font-semibold px-2.5 py-1 rounded-[20px] hover:border-[#BF72FF]/50 transition-colors"
+              >
+                {event.clann_event_id}
+                <Copy size={12} />
+              </button>
+            </div>
+          )}
 
-        {/* Clann Event ID chip — top right, above the banner image */}
-        {event.clann_event_id && (
-          <div className="flex flex-col items-end mb-3">
-            <span className="text-[10px] text-[#727272] font-semibold tracking-widest mb-1">EVENT ID</span>
-            <button
-              type="button"
-              onClick={copyEventId}
-              data-testid="event-id-chip"
-              title="Copy event ID"
-              className="inline-flex items-center gap-1.5 bg-[#18002C] text-[#BF72FF] border border-[#46176D] text-[11px] font-semibold px-2.5 py-1 rounded-[20px] hover:border-[#BF72FF]/50 transition-colors"
-            >
-              {event.clann_event_id}
-              <Copy size={12} />
-            </button>
-          </div>
-        )}
-
-        <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[#18002C]">
-          <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D]/90 via-transparent to-transparent" />
-          <div className="absolute top-4 right-4 flex gap-2">
-            <button data-testid="detail-share" onClick={share} title="Share event" className="p-2.5 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors">
-              <Share2 size={16}/>
-            </button>
-            <button data-testid="detail-save" onClick={toggleSave} className={`p-2.5 rounded-full backdrop-blur transition-colors ${saved ? "bg-[#F84E00] text-white" : "bg-black/50 hover:bg-[#46176D] text-white"}`}>
-              <Bookmark size={16} fill={saved ? "currentColor" : "none"}/>
-            </button>
+          <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[#18002C]">
+            <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D]/90 via-transparent to-transparent" />
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button data-testid="detail-share" onClick={share} title="Share event" className="p-2.5 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors">
+                <Share2 size={16}/>
+              </button>
+              <button data-testid="detail-save" onClick={toggleSave} className={`p-2.5 rounded-full backdrop-blur transition-colors ${saved ? "bg-[#F84E00] text-white" : "bg-black/50 hover:bg-[#46176D] text-white"}`}>
+                <Bookmark size={16} fill={saved ? "currentColor" : "none"}/>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -246,7 +247,7 @@ const EventDetail = () => {
           </div>
         </div>
 
-        <h1 data-testid="event-title" className="mt-3 text-3xl sm:text-5xl font-black text-white tracking-tighter leading-none">
+        <h1 data-testid="event-title" className="mt-3 text-3xl sm:text-5xl font-black text-white tracking-tighter leading-[32px] sm:leading-[50px]">
           {event.title}
         </h1>
 
@@ -265,41 +266,60 @@ const EventDetail = () => {
           {status.text}
         </div>
 
-        <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
-          <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#BF72FF] text-xs uppercase font-bold tracking-widest"><MapPin size={13}/> Location</div>
-            {event.location && event.location.trim() ? (
-              <p className="mt-1 text-white font-medium">{event.location}</p>
-            ) : (
-              <p className="mt-1 text-[#727272] italic">Location to be announced</p>
-            )}
+        {/* Combined Location / Date / Timings — single container, three rows separated by dividers */}
+        <div className="mt-6 w-full bg-[#18002C] border border-[#46176D]/30 rounded-[12px] p-4">
+          {/* Location row */}
+          <div className="flex items-center gap-3">
+            <MapPin size={16} className="shrink-0 text-[#F84E00]" />
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-[#727272]">Location</p>
+              {event.location && event.location.trim() ? (
+                <p className="text-sm text-white font-medium">{event.location}</p>
+              ) : (
+                <p className="text-sm text-[#727272] italic">Location to be announced</p>
+              )}
+            </div>
           </div>
-          <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#BF72FF] text-xs uppercase font-bold tracking-widest"><Calendar size={13}/> Date</div>
-            {event.event_date && event.event_date.trim() ? (
-              <p className="mt-1 text-white font-medium">{event.event_date}</p>
-            ) : (
-              <p className="mt-1 text-[#727272] italic">Date to be announced</p>
-            )}
-            {event.registration_deadline && event.registration_deadline.trim() ? (
-              <p className="text-xs text-[#727272] mt-1">Register before {event.registration_deadline}</p>
-            ) : (
-              <p className="text-xs text-[#727272] mt-1">Check event page for deadline</p>
-            )}
+
+          <div className="my-3 h-px bg-[#46176D]/20" />
+
+          {/* Date row */}
+          <div className="flex items-center gap-3">
+            <Calendar size={16} className="shrink-0 text-[#F84E00]" />
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-[#727272]">Date</p>
+              {event.event_date && event.event_date.trim() ? (
+                <p className="text-sm text-white font-medium">{event.event_date}</p>
+              ) : (
+                <p className="text-sm text-[#727272] italic">Date to be announced</p>
+              )}
+              {event.registration_deadline && event.registration_deadline.trim() ? (
+                <p className="mt-0.5 text-xs text-[#727272]">Register before {event.registration_deadline}</p>
+              ) : (
+                <p className="mt-0.5 text-xs text-[#727272]">Check event page for deadline</p>
+              )}
+            </div>
           </div>
-          <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-4">
-            <div className="flex items-center gap-2 text-[#BF72FF] text-xs uppercase font-bold tracking-widest"><Clock size={13}/> Timings</div>
-            {!(event.start_time && event.start_time.trim()) ? (
-              <p className="mt-1 text-[#727272] italic">Timings to be announced</p>
-            ) : !(event.end_time && event.end_time.trim()) ? (
-              <p className="mt-1 text-white font-medium">{event.start_time}</p>
-            ) : (
-              <p className="mt-1 text-white font-medium">{event.start_time} – {event.end_time}</p>
-            )}
+
+          <div className="my-3 h-px bg-[#46176D]/20" />
+
+          {/* Timings row */}
+          <div className="flex items-center gap-3">
+            <Clock size={16} className="shrink-0 text-[#F84E00]" />
+            <div className="min-w-0">
+              <p className="text-[11px] uppercase tracking-wider text-[#727272]">Timings</p>
+              {!(event.start_time && event.start_time.trim()) ? (
+                <p className="text-sm text-[#727272] italic">Timings to be announced</p>
+              ) : !(event.end_time && event.end_time.trim()) ? (
+                <p className="text-sm text-white font-medium">{event.start_time}</p>
+              ) : (
+                <p className="text-sm text-white font-medium">{event.start_time} – {event.end_time}</p>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 bg-[#18002C] border border-[#46176D]/30 rounded-xl p-5">
+        <div className="mt-6">
           <h2 className="text-lg font-bold text-white mb-2">About This Event</h2>
           <p className="text-sm text-[#FFFBE9]/70 leading-relaxed whitespace-pre-line">{event.full_description}</p>
         </div>
@@ -345,7 +365,7 @@ const EventDetail = () => {
           />
         </div>
 
-        <div className="mt-4">
+        <div className="mt-6">
           <button
             type="button"
             onClick={handleRegister}
@@ -359,7 +379,7 @@ const EventDetail = () => {
         </div>
 
         {related.length > 0 && (
-          <div className="mt-14">
+          <div className="mt-8">
             <h2 className="text-[18px] font-bold text-white mb-5 text-left">More Exciting Events</h2>
             <div
               className="flex gap-3 overflow-x-auto scrollbar-hide pl-0 pr-4"
@@ -372,6 +392,29 @@ const EventDetail = () => {
           </div>
         )}
       </div>
+
+      {/* Sticky Register Now bar — mobile only (hidden at md and above) */}
+      <div
+        data-testid="sticky-register-bar"
+        className="fixed bottom-[61px] left-0 right-0 z-50 md:hidden bg-[#0D0D0D] border-t border-[#46176D]/40 px-4 py-3"
+      >
+        <div className="flex items-center gap-3">
+          <p className="flex-1 min-w-0 truncate text-[13px] font-semibold text-white">
+            {event.title}
+          </p>
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={!hasRegLink}
+            title={hasRegLink ? "" : "Registration link coming soon"}
+            data-testid="sticky-register-btn"
+            className="shrink-0 inline-flex items-center justify-center bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-[20px] px-5 py-2.5 text-sm font-bold transition-colors"
+          >
+            Register Now
+          </button>
+        </div>
+      </div>
+
       <BottomTabBar />
     </div>
   );
