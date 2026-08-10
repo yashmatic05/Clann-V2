@@ -8,7 +8,7 @@ import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight } from "l
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { registrationStatus, priceLabel, priceBadgeClass, parseDate, daysBetween, formatDeadlineDate } from "@/lib/event-utils";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 
 const categoryColor = (cat) => {
@@ -20,6 +20,29 @@ const categoryColor = (cat) => {
   if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
   if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+};
+
+const stickyRegistrationDeadlineText = (event) => {
+  const rawDeadline = event?.registration_deadline?.trim();
+  if (!rawDeadline) return "Register for this event";
+
+  const deadline = parseDate(rawDeadline);
+  if (!deadline) return "Register for this event";
+
+  const today = new Date();
+  const daysLeft = daysBetween(deadline, today);
+
+  if (Number.isFinite(daysLeft)) {
+    if (daysLeft === 0) return "Registration closes today";
+    if (daysLeft === 1) return "1 day left to register";
+    if (daysLeft >= 2) return `${daysLeft} days left to register`;
+  }
+
+  if (deadline > today) {
+    return `Register before ${formatDeadlineDate(deadline) || rawDeadline}`;
+  }
+
+  return "Register for this event";
 };
 
 const RelatedEventCard = ({ event, savedIds }) => {
@@ -193,18 +216,19 @@ const EventDetail = () => {
   if (!event) return <div className="min-h-screen bg-[#0D0D0D]" />;
 
   const status = registrationStatus(event);
+  const stickyDeadlineText = stickyRegistrationDeadlineText(event);
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
       <Navbar />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-20 md:pb-0">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-6 pb-20 md:pb-0">
         {/* Banner container — relative anchor for the Clann Event ID chip.
-            The chip is absolutely positioned so it floats 16px above the banner
-            image (never overlapping the image content or the share/save buttons):
+            The chip is absolutely positioned above the banner image
+            (never overlapping the image content or the share/save buttons):
             top-right on mobile, top-left on desktop. */}
-        <div className={`relative${event.clann_event_id ? " pt-[78px]" : ""}`}>
+        <div className={`relative${event.clann_event_id ? " pt-[58px] md:pt-[78px]" : ""}`}>
           {event.clann_event_id && (
-            <div className="absolute top-4 right-0 flex flex-col items-end md:right-auto md:left-0 md:items-start">
+            <div className="absolute top-0 right-0 flex flex-col items-end md:top-4 md:right-auto md:left-0 md:items-start">
               <span className="text-[10px] text-[#727272] font-semibold tracking-widest mb-1">EVENT ID</span>
               <button
                 type="button"
@@ -396,11 +420,11 @@ const EventDetail = () => {
       {/* Sticky Register Now bar — mobile only (hidden at md and above) */}
       <div
         data-testid="sticky-register-bar"
-        className="fixed bottom-[61px] left-0 right-0 z-50 md:hidden bg-[#0D0D0D] border-t border-[#46176D]/40 px-4 py-3"
+        className="fixed bottom-[60px] left-0 right-0 z-50 md:hidden bg-[#0D0D0D] border-t border-[#46176D]/40 px-4 py-3"
       >
         <div className="flex items-center gap-3">
           <p className="flex-1 min-w-0 truncate text-[13px] font-semibold text-white">
-            {event.title}
+            {stickyDeadlineText}
           </p>
           <button
             type="button"
@@ -408,7 +432,7 @@ const EventDetail = () => {
             disabled={!hasRegLink}
             title={hasRegLink ? "" : "Registration link coming soon"}
             data-testid="sticky-register-btn"
-            className="shrink-0 inline-flex items-center justify-center bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-[20px] px-5 py-2.5 text-sm font-bold transition-colors"
+            className="shrink-0 w-[clamp(168px,58vw,230px)] inline-flex items-center justify-center bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-[20px] px-5 py-2.5 text-sm font-bold transition-colors"
           >
             Register Now
           </button>
