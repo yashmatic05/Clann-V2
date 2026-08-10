@@ -8,7 +8,7 @@ import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight } from "l
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus, priceLabel, priceBadgeClass, parseDate, daysBetween, formatDeadlineDate } from "@/lib/event-utils";
+import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 
 const categoryColor = (cat) => {
@@ -20,29 +20,6 @@ const categoryColor = (cat) => {
   if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
   if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-};
-
-const stickyRegistrationDeadlineText = (event) => {
-  const rawDeadline = event?.registration_deadline?.trim();
-  if (!rawDeadline) return "Register for this event";
-
-  const deadline = parseDate(rawDeadline);
-  if (!deadline) return "Register for this event";
-
-  const today = new Date();
-  const daysLeft = daysBetween(deadline, today);
-
-  if (Number.isFinite(daysLeft)) {
-    if (daysLeft === 0) return "Registration closes today";
-    if (daysLeft === 1) return "1 day left to register";
-    if (daysLeft >= 2) return `${daysLeft} days left to register`;
-  }
-
-  if (deadline > today) {
-    return `Register before ${formatDeadlineDate(deadline) || rawDeadline}`;
-  }
-
-  return "Register for this event";
 };
 
 const RelatedEventCard = ({ event, savedIds }) => {
@@ -97,7 +74,7 @@ const RelatedEventCard = ({ event, savedIds }) => {
               window.open(event.external_link, "_blank", "noopener,noreferrer");
             }
           }}
-          className="w-full h-[28px] bg-[#F84E00] text-white text-[11px] rounded-[20px] font-bold"
+          className="mt-auto w-full h-[28px] bg-[#F84E00] text-white text-[11px] rounded-[20px] font-bold"
         >
           Register
         </button>
@@ -216,7 +193,6 @@ const EventDetail = () => {
   if (!event) return <div className="min-h-screen bg-[#0D0D0D]" />;
 
   const status = registrationStatus(event);
-  const stickyDeadlineText = stickyRegistrationDeadlineText(event);
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
@@ -404,7 +380,7 @@ const EventDetail = () => {
 
         {related.length > 0 && (
           <div className="mt-8">
-            <h2 className="text-[18px] font-bold text-white mb-5 text-left">More Exciting Events</h2>
+            <h2 className="text-[18px] font-bold text-white mb-5 text-left">More Events</h2>
             <div
               className="flex gap-3 overflow-x-auto scrollbar-hide pl-0 pr-4"
               style={{ WebkitOverflowScrolling: "touch" }}
@@ -423,8 +399,8 @@ const EventDetail = () => {
         className="fixed bottom-[60px] left-0 right-0 z-50 md:hidden bg-[#0D0D0D] border-t border-[#46176D]/40 px-4 py-3"
       >
         <div className="flex items-center gap-3">
-          <p className="flex-1 min-w-0 truncate text-[13px] font-semibold text-white">
-            {stickyDeadlineText}
+          <p className="flex-1 min-w-0 truncate text-[13px] font-semibold text-[#F84E00]">
+            {status.text}
           </p>
           <button
             type="button"
