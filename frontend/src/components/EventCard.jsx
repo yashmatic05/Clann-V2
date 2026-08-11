@@ -4,7 +4,9 @@ import { MapPin, Calendar, Share2, Bookmark, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus, parseDate, priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { formatEventDateShort } from "@/lib/dates";
+import { pickEventImage } from "@/lib/image-fallback";
 
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
@@ -17,7 +19,7 @@ const categoryColor = (cat) => {
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
 };
 
-const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
+const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImages }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [saved, setSaved] = useState(initialSaved);
@@ -92,10 +94,7 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
   const knowMore = (e) => { e.preventDefault(); e.stopPropagation(); navigate(`/event/${event.event_id}`); };
 
   const status = registrationStatus(event);
-  const displayDate = (() => {
-    const d = parseDate(event.event_date);
-    return d ? d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) : event.event_date;
-  })();
+  const displayDate = formatEventDateShort(event.event_date);
 
   return (
     <>
@@ -107,7 +106,7 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
         {/* Image — clean, only copy/save icons overlaid */}
         <div className="relative aspect-video overflow-hidden bg-[#280049]">
           <img
-            src={event.image_url}
+            src={pickEventImage(event, usedImages)}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"

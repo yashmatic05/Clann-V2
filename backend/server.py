@@ -688,7 +688,7 @@ async def list_events(
             )
             
             matches_clann_id = (
-                normalized_q != "" and normalized_db_id != "" and (normalized_q == normalized_db_id)
+                normalized_q != "" and normalized_db_id != "" and normalized_db_id.startswith(normalized_q)
             )
             
             if matches_text or matches_clann_id:

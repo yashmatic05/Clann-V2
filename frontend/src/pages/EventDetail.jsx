@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
@@ -9,6 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { formatEventDateShort } from "@/lib/dates";
+import { pickEventImage } from "@/lib/image-fallback";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 
 const categoryColor = (cat) => {
@@ -22,17 +24,17 @@ const categoryColor = (cat) => {
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
 };
 
-const RelatedEventCard = ({ event, savedIds }) => {
+const RelatedEventCard = ({ event, savedIds, usedImages }) => {
   const navigate = useNavigate();
   const status = registrationStatus(event);
 
   return (
     <div
       onClick={() => navigate(`/event/${event.event_id}`)}
-      className="flex-shrink-0 w-[200px] h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer"
+      className="flex-shrink-0 w-[200px] h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer flex flex-col"
     >
-      <img src={event.image_url} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
-      <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden">
+      <img src={pickEventImage(event, usedImages)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
+      <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
           <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
@@ -56,7 +58,7 @@ const RelatedEventCard = ({ event, savedIds }) => {
         {/* Row 4 */}
         <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
           <Calendar size={10} className="shrink-0 text-[#BF72FF]" />
-          <span>{event.event_date}</span>
+          <span>{formatEventDateShort(event.event_date)}</span>
         </p>
 
         {/* Row 5 */}
@@ -91,6 +93,7 @@ const EventDetail = () => {
   const [related, setRelated] = useState([]);
   const [saved, setSaved] = useState(false);
   const [remindOn, setRemindOn] = useState(false);
+  const usedImages = useMemo(() => new Set(), [related]);
 
   useEffect(() => {
     (async () => {
@@ -289,7 +292,7 @@ const EventDetail = () => {
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wider text-[#727272]">Date</p>
               {event.event_date && event.event_date.trim() ? (
-                <p className="text-sm text-white font-medium">{event.event_date}</p>
+                <p className="text-sm text-white font-medium">{formatEventDateShort(event.event_date)}</p>
               ) : (
                 <p className="text-sm text-[#727272] italic">Date to be announced</p>
               )}
@@ -386,7 +389,7 @@ const EventDetail = () => {
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {related.map((r) => (
-                <RelatedEventCard key={r.event_id} event={r} />
+                <RelatedEventCard key={r.event_id} event={r} usedImages={usedImages} />
               ))}
             </div>
           </div>

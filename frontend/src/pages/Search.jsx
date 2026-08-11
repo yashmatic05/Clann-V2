@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
 import { api, searchEvents } from "@/lib/api";
@@ -15,6 +15,7 @@ const Search = () => {
   const [savedIds, setSavedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const usedImages = useMemo(() => new Set(), [results]);
 
   // Load saved events for current user
   useEffect(() => {
@@ -107,6 +108,7 @@ const Search = () => {
               event={ev}
               index={i}
               initialSaved={savedIds.has(ev.event_id)}
+              usedImages={usedImages}
             />
           ))}
         </div>

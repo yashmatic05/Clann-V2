@@ -255,6 +255,7 @@ const AdminPanel = () => {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyEvent);
   const [skillsInput, setSkillsInput] = useState("");
+  const [imageWarning, setImageWarning] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingTags, setGeneratingTags] = useState(false);
@@ -271,6 +272,24 @@ const AdminPanel = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const fileInputRef = useRef(null);
+  const imageCheckRef = useRef(0);
+
+  const checkImageOrientation = (value) => {
+    const requestId = ++imageCheckRef.current;
+    const url = String(value || "").trim();
+    setImageWarning(false);
+    if (!url) return;
+
+    const image = new Image();
+    image.onload = () => {
+      if (requestId !== imageCheckRef.current) return;
+      setImageWarning(image.naturalHeight >= image.naturalWidth);
+    };
+    image.onerror = () => {
+      if (requestId === imageCheckRef.current) setImageWarning(false);
+    };
+    image.src = url;
+  };
 
   const isAuthed = () => !!localStorage.getItem("clann_admin_token");
 
@@ -304,6 +323,8 @@ const AdminPanel = () => {
 
   const openAdd = () => {
     setEditingId(null);
+    setImageWarning(false);
+    imageCheckRef.current += 1;
     setForm(emptyEvent);
     setSkillsInput("");
     setDisplayType("standard");
@@ -314,6 +335,8 @@ const AdminPanel = () => {
   };
   const openEdit = (ev) => {
     setEditingId(ev.event_id);
+    setImageWarning(false);
+    imageCheckRef.current += 1;
     setForm({ ...emptyEvent, ...ev, price: ev.price || "" });
     setSkillsInput((ev.skills || []).join(", "));
     const cat = (ev.homepage_category || "").trim();
@@ -613,7 +636,6 @@ const AdminPanel = () => {
           <div className="flex items-center gap-2">
             <img src="/brand/clann-logo.png" alt="Clann" className="h-8 w-auto" />
             <div>
-              <div className="font-black text-lg text-white leading-none">Clann</div>
               <div className="text-[10px] text-[#BF72FF] font-bold uppercase tracking-widest">Admin Console</div>
             </div>
           </div>
@@ -946,7 +968,18 @@ const AdminPanel = () => {
             <Field label="Full Description">
               <textarea data-testid="form-full" rows={4} value={form.full_description} onChange={(e) => setForm({...form, full_description: e.target.value})} className={`${inputCls} resize-y`}/>
             </Field>
-            <Field label="Event Image URL *"><input data-testid="form-image" value={form.image_url} onChange={(e) => setForm({...form, image_url: e.target.value})} className={inputCls}/></Field>
+            <Field label="Event Image URL *">
+              <input
+                data-testid="form-image"
+                value={form.image_url}
+                onChange={(e) => setForm({...form, image_url: e.target.value})}
+                onBlur={(e) => checkImageOrientation(e.target.value)}
+                className={inputCls}
+              />
+              {imageWarning && (
+                <p className="mt-1 text-[10px] text-[#727272]">This image looks square/portrait — event cards are horizontal, so it may get cropped tightly. A landscape (wide) image works best.</p>
+              )}
+            </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Location"><input data-testid="form-location" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} className={inputCls}/></Field>
               <Field label="City">

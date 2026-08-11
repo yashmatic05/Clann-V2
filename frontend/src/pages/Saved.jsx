@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -13,6 +13,7 @@ const Saved = () => {
   const { user, loading } = useAuth();
   const [events, setEvents] = useState([]);
   const [ready, setReady] = useState(false);
+  const usedImages = useMemo(() => new Set(), [events]);
 
   useEffect(() => {
     if (loading) return;
@@ -63,6 +64,7 @@ const Saved = () => {
                 index={i}
                 initialSaved={true}
                 onUnsave={handleUnsave}
+                usedImages={usedImages}
               />
             ))}
           </div>
