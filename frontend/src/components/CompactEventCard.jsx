@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Calendar, ChevronRight, Copy, Bookmark } from "lucide-react";
+import { MapPin, Calendar, ChevronRight, Share2, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { registrationStatus, parseDate, priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { formatEventDateShort } from "@/lib/dates";
+import { pickEventImage } from "@/lib/image-fallback";
 
 // Same per-category chip colors as EventCard (kept local — EventCard must stay untouched)
 const categoryColor = (cat) => {
@@ -24,7 +26,7 @@ const categoryColor = (cat) => {
  * title clamps at 2 lines, everything else truncates to 1 line.
  * Register behavior is identical to EventCard.
  */
-const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
+const CompactEventCard = ({ event, index = 0, initialSaved = false, usedImages }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [saved, setSaved] = useState(initialSaved);
@@ -103,12 +105,7 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
   };
 
   const status = registrationStatus(event);
-  const displayDate = (() => {
-    const d = parseDate(event.event_date);
-    return d
-      ? d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })
-      : event.event_date;
-  })();
+  const displayDate = formatEventDateShort(event.event_date);
 
   return (
     <Link
@@ -119,7 +116,7 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
       {/* Image — fixed 100px height */}
       <div className="relative h-[100px] shrink-0 overflow-hidden bg-[#280049]">
         <img
-          src={event.image_url}
+          src={pickEventImage(event, usedImages)}
           alt={event.title}
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -132,7 +129,7 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
             title="Copy link"
             className="p-[6px] rounded-full bg-black/50 text-white transition-colors"
           >
-            <Copy size={12} />
+            <Share2 size={12} />
           </button>
           <button
             type="button"

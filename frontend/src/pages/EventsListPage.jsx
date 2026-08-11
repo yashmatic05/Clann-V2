@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import { MapPin, Calendar, ChevronLeft } from "lucide-react";
 import { registrationStatus } from "@/lib/event-utils";
+import { formatEventDateShort } from "@/lib/dates";
+import { pickEventImage } from "@/lib/image-fallback";
 
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
@@ -17,7 +19,7 @@ const categoryColor = (cat) => {
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
 };
 
-const RelatedEventCard = ({ event }) => {
+const RelatedEventCard = ({ event, usedImages }) => {
   const navigate = useNavigate();
   const status = registrationStatus(event);
 
@@ -26,7 +28,7 @@ const RelatedEventCard = ({ event }) => {
       onClick={() => navigate(`/event/${event.event_id}`)}
       className="w-full h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer flex flex-col"
     >
-      <img src={event.image_url} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
+      <img src={pickEventImage(event, usedImages)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
       <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
@@ -41,7 +43,7 @@ const RelatedEventCard = ({ event }) => {
         </h4>
 
         {/* Row 3 */}
-        <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate mt-auto">
+        <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
           <MapPin size={10} className="shrink-0 text-[#BF72FF]" />
           <span className="truncate">
             {event.city}{event.location ? ` | ${event.location.split(",")[0]}` : ""}
@@ -51,7 +53,7 @@ const RelatedEventCard = ({ event }) => {
         {/* Row 4 */}
         <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
           <Calendar size={10} className="shrink-0 text-[#BF72FF]" />
-          <span>{event.event_date}</span>
+          <span>{formatEventDateShort(event.event_date)}</span>
         </p>
 
         {/* Row 5 */}
@@ -69,7 +71,7 @@ const RelatedEventCard = ({ event }) => {
               window.open(event.external_link, "_blank", "noopener,noreferrer");
             }
           }}
-          className="w-full h-[28px] bg-[#F84E00] text-white text-[11px] rounded-[20px] font-bold"
+          className="mt-auto w-full h-[28px] bg-[#F84E00] text-white text-[11px] rounded-[20px] font-bold"
         >
           Register
         </button>
@@ -86,6 +88,7 @@ const EventsListPage = () => {
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const usedImages = useMemo(() => new Set(), [events]);
 
   useEffect(() => {
     (async () => {
@@ -172,7 +175,7 @@ const EventsListPage = () => {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {events.map((ev) => (
-              <RelatedEventCard key={ev.event_id} event={ev} />
+              <RelatedEventCard key={ev.event_id} event={ev} usedImages={usedImages} />
             ))}
           </div>
         )}

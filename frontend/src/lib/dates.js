@@ -22,3 +22,12 @@ export const formatEventDate = (value, options = {}) => {
     ...options,
   });
 };
+
+export const formatEventDateShort = (value) => {
+  const d = parseEventDate(value);
+  if (!d) return value || "Date TBA";
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear()).padStart(4, "0");
+  return `${day}-${month}-${year}`;
+};

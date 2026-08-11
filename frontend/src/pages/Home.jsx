@@ -92,6 +92,8 @@ const Home = () => {
     return events;
   }, [events, mode]);
 
+  const usedImages = useMemo(() => new Set(), [filteredEvents, govEvents]);
+
   const isAll = category === "All";
 
   const homepageSections = useMemo(() => {
@@ -165,6 +167,7 @@ const Home = () => {
                 event={ev}
                 index={i}
                 initialSaved={savedIds.has(ev.event_id)}
+                usedImages={usedImages}
               />
             ))}
           </div>
@@ -189,6 +192,7 @@ const Home = () => {
                 event={ev}
                 index={500 + i}
                 initialSaved={savedIds.has(ev.event_id)}
+                usedImages={usedImages}
               />
             ))}
           </div>
@@ -197,7 +201,7 @@ const Home = () => {
 
       {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
       {isAll && !loading && (
-        <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} />
+        <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} usedImages={usedImages} />
       )}
 
       <Footer />
