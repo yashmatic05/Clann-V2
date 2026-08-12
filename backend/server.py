@@ -62,7 +62,9 @@ class EventCreate(BaseModel):
     mode: str  # Online / Offline / Both
     short_description: str
     full_description: str
-    image_url: str
+    # image_url is OPTIONAL: store "" when there is no real event image. The
+    # frontend shows a render-time stock fallback. Never auto-fill a stock URL.
+    image_url: Optional[str] = None
     location: str
     city: str
     event_date: str  # ISO string date
@@ -133,6 +135,33 @@ class EventReminderToggle(BaseModel):
 class FeedbackCreate(BaseModel):
     star_rating: int
     feedback_text: str
+
+class OrganizerSubmissionCreate(BaseModel):
+    organizer_name: str = Field(min_length=1)
+    organizer_email: EmailStr
+    organizer_phone: Optional[str] = ""
+    title: str = Field(min_length=1)
+    category: str = "Workshop"  # Workshop, Meetup, Hackathon, Conference, Walk, Art & Sketch
+    mode: str = "Offline"  # Online / Offline / Both
+    short_description: str = Field(min_length=1)
+    full_description: str = ""
+    # image_url is OPTIONAL: no real event image -> store empty string and let
+    # the frontend show a stock fallback. Never auto-fill a stock URL here.
+    image_url: Optional[str] = ""
+    location: str = ""
+    city: str = "Delhi"
+    event_date: str = Field(min_length=1)  # ISO string date YYYY-MM-DD
+    start_time: str = "10:00"
+    end_time: str = "13:00"
+    registration_deadline: Optional[str] = ""
+    is_paid: bool = False
+    price: Optional[str] = None
+    total_seats: int = 0
+    external_link: str = ""
+    notes: Optional[str] = ""
+
+class SubmissionReject(BaseModel):
+    reason: Optional[str] = ""
 
 # -----------------------------
 # Helpers
@@ -485,10 +514,12 @@ async def admin_stats(_=Depends(require_admin)):
     total_events = await db.events.count_documents({})
     total_users = await db.users.count_documents({})
     total_organizers = await db.users.count_documents({"role": "organizer"})
+    pending_submissions = await db.submissions.count_documents({"status": "pending"})
     return {
         "total_events": total_events,
         "total_users": total_users,
         "total_organizers": total_organizers,
+        "pending_submissions": pending_submissions,
     }
 
 
@@ -722,10 +753,10 @@ async def related_events(event_id: str, limit: int = 3):
     docs = await db.events.find(query, {"_id": 0}).sort("event_date", 1).to_list(safe_limit)
     return docs
 
-@api_router.post("/events")
-async def create_event(payload: EventCreate, _=Depends(require_admin)):
-    normalized_title = normalize_event_title(payload.title)
-    existing = await db.events.find_one(
+async def find_duplicate_event(title: str):
+    """Return the first event whose title matches `title` (case/whitespace-insensitive)."""
+    normalized_title = normalize_event_title(title)
+    return await db.events.find_one(
         {
             "$expr": {
                 "$eq": [
@@ -742,6 +773,75 @@ async def create_event(payload: EventCreate, _=Depends(require_admin)):
         },
         {"_id": 0, "event_id": 1},
     )
+
+
+async def prepare_event_doc(
+    *,
+    title, category, mode, short_description, full_description, image_url,
+    location, city, event_date, start_time, end_time, registration_deadline,
+    is_paid=False, price=None, total_seats=0, seats_left=None,
+    external_link="", skills=None, recommended_for=None,
+    featured=False, is_government=False, homepage_category=None,
+):
+    """Build (but do NOT insert) a fully-formed event document.
+
+    Shared by the admin create-event endpoint and the approval of a public
+    organizer submission, so both paths produce identical event records:
+    clann_event_id, auto-generated skills/recommended_for tags, seats_left
+    defaulting to total_seats, and a UTC created_at timestamp.
+    """
+    event_id = f"evt_{uuid.uuid4().hex[:10]}"
+    doc = {
+        "event_id": event_id,
+        "title": title,
+        "category": category,
+        "mode": mode,
+        "short_description": short_description,
+        "full_description": full_description,
+        "image_url": image_url or "",
+        "location": location,
+        "city": city,
+        "event_date": event_date,
+        "start_time": start_time,
+        "end_time": end_time,
+        "registration_deadline": registration_deadline or event_date,
+        "is_paid": bool(is_paid),
+        "price": price,
+        "total_seats": total_seats or 0,
+        "seats_left": seats_left,
+        "external_link": external_link,
+        "skills": skills or [],
+        "recommended_for": recommended_for or [],
+        "featured": bool(featured),
+        "is_government": bool(is_government),
+        "homepage_category": homepage_category,
+    }
+
+    # Auto-generate skills / recommended_for tags only when the caller
+    # hasn't provided them. Bulk Excel import posts each row through
+    # create_event, so imported events get tags on the same path.
+    auto_skills, auto_recs = generate_event_tags(title, category, short_description)
+    if not doc.get("skills"):
+        doc["skills"] = auto_skills
+    if not doc.get("recommended_for"):
+        doc["recommended_for"] = auto_recs
+
+    clann_event_id = generate_event_id(title, category)
+    # Retry on the (rare) chance the random suffix collides with an existing ID.
+    while await db.events.find_one(
+        {"clann_event_id": clann_event_id}, {"_id": 0, "clann_event_id": 1}
+    ):
+        clann_event_id = generate_event_id(title, category)
+    doc["clann_event_id"] = clann_event_id
+    if doc.get("seats_left") is None:
+        doc["seats_left"] = doc.get("total_seats", 0)
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    return doc
+
+
+@api_router.post("/events")
+async def create_event(payload: EventCreate, _=Depends(require_admin)):
+    existing = await find_duplicate_event(payload.title)
     if existing:
         return JSONResponse(
             status_code=409,
@@ -752,31 +852,7 @@ async def create_event(payload: EventCreate, _=Depends(require_admin)):
             },
         )
 
-    event_id = f"evt_{uuid.uuid4().hex[:10]}"
-    doc = payload.model_dump()
-    doc["event_id"] = event_id
-
-    # Auto-generate skills / recommended_for tags only when the admin
-    # hasn't provided them. Bulk Excel import posts each row here too, so
-    # imported events get tags on the same path.
-    auto_skills, auto_recs = generate_event_tags(
-        payload.title, payload.category, payload.short_description
-    )
-    if not doc.get("skills"):
-        doc["skills"] = auto_skills
-    if not doc.get("recommended_for"):
-        doc["recommended_for"] = auto_recs
-
-    clann_event_id = generate_event_id(payload.title, payload.category)
-    # Retry on the (rare) chance the random suffix collides with an existing ID.
-    while await db.events.find_one(
-        {"clann_event_id": clann_event_id}, {"_id": 0, "clann_event_id": 1}
-    ):
-        clann_event_id = generate_event_id(payload.title, payload.category)
-    doc["clann_event_id"] = clann_event_id
-    if doc.get("seats_left") is None:
-        doc["seats_left"] = doc.get("total_seats", 0)
-    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    doc = await prepare_event_doc(**payload.model_dump())
     await db.events.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -935,6 +1011,153 @@ async def admin_feedback(_=Depends(require_admin)):
     return docs
 
 # -----------------------------
+# Organizer Submissions (public form + admin approval queue)
+# -----------------------------
+@api_router.post("/submissions")
+async def create_organizer_submission(payload: OrganizerSubmissionCreate):
+    """Public endpoint — anyone can propose an event for Clann.
+
+    The submission lands in the `submissions` collection with status
+    `pending` and is only visible on the site after an admin approves it
+    (which creates a real event in the `events` collection).
+    """
+    if not payload.event_date or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", payload.event_date.strip()):
+        raise HTTPException(status_code=400, detail="event_date must be in YYYY-MM-DD format")
+    submission_id = f"sub_{uuid.uuid4().hex[:10]}"
+    doc = {
+        "submission_id": submission_id,
+        "status": "pending",
+        "organizer_name": payload.organizer_name.strip(),
+        "organizer_email": payload.organizer_email.strip().lower(),
+        "organizer_phone": (payload.organizer_phone or "").strip(),
+        "title": payload.title.strip(),
+        "category": payload.category,
+        "mode": payload.mode,
+        "short_description": payload.short_description.strip(),
+        "full_description": (payload.full_description or "").strip(),
+        "image_url": (payload.image_url or "").strip(),
+        "location": (payload.location or "").strip(),
+        "city": (payload.city or "").strip(),
+        "event_date": payload.event_date.strip(),
+        "start_time": payload.start_time,
+        "end_time": payload.end_time,
+        "registration_deadline": (payload.registration_deadline or "").strip(),
+        "is_paid": bool(payload.is_paid),
+        "price": payload.price,
+        "total_seats": payload.total_seats or 0,
+        "external_link": (payload.external_link or "").strip(),
+        "notes": (payload.notes or "").strip(),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.submissions.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api_router.get("/submissions/{submission_id}/status")
+async def submission_status(submission_id: str, email: str):
+    """Public status lookup — only reveals info when the email matches the submitter."""
+    doc = await db.submissions.find_one(
+        {"submission_id": submission_id, "organizer_email": email.strip().lower()},
+        {"_id": 0},
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return {
+        "submission_id": doc["submission_id"],
+        "status": doc["status"],
+        "title": doc.get("title", ""),
+        "reject_reason": doc.get("reject_reason"),
+        "created_event_id": doc.get("created_event_id"),
+        "submitted_at": doc.get("submitted_at"),
+    }
+
+@api_router.get("/admin/submissions")
+async def admin_list_submissions(status: Optional[str] = None, _=Depends(require_admin)):
+    query = {}
+    if status in ("pending", "approved", "rejected"):
+        query["status"] = status
+    docs = await db.submissions.find(query, {"_id": 0}).sort("submitted_at", -1).to_list(500)
+    return docs
+
+@api_router.post("/admin/submissions/{submission_id}/approve")
+async def approve_submission(submission_id: str, _=Depends(require_admin)):
+    """Approve a pending submission — creates a live event exactly like the admin form would."""
+    sub = await db.submissions.find_one({"submission_id": submission_id}, {"_id": 0})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if sub.get("status") != "pending":
+        raise HTTPException(status_code=409, detail="Submission already processed")
+    duplicate = await find_duplicate_event(sub.get("title", ""))
+    if duplicate:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "An event with this title already exists "
+                f"(event_id {duplicate.get('event_id')}). "
+                "Reject the submission or rename the event first."
+            ),
+        )
+    event = await prepare_event_doc(
+        title=sub["title"],
+        category=sub["category"],
+        mode=sub["mode"],
+        short_description=sub["short_description"],
+        full_description=sub.get("full_description", ""),
+        image_url=sub["image_url"],
+        location=sub.get("location", ""),
+        city=sub.get("city", ""),
+        event_date=sub["event_date"],
+        start_time=sub["start_time"],
+        end_time=sub["end_time"],
+        registration_deadline=sub.get("registration_deadline") or sub["event_date"],
+        is_paid=bool(sub.get("is_paid")),
+        price=sub.get("price"),
+        total_seats=sub.get("total_seats") or 0,
+        external_link=sub.get("external_link", ""),
+    )
+    await db.events.insert_one(event)
+    event.pop("_id", None)
+    await db.submissions.update_one(
+        {"submission_id": submission_id},
+        {"$set": {
+            "status": "approved",
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "created_event_id": event["event_id"],
+        }},
+    )
+    return {
+        "ok": True,
+        "status": "approved",
+        "submission_id": submission_id,
+        "event": event,
+    }
+
+@api_router.post("/admin/submissions/{submission_id}/reject")
+async def reject_submission(submission_id: str, payload: SubmissionReject, _=Depends(require_admin)):
+    sub = await db.submissions.find_one({"submission_id": submission_id}, {"_id": 0})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if sub.get("status") != "pending":
+        raise HTTPException(status_code=409, detail="Submission already processed")
+    reason = (payload.reason or "").strip()
+    await db.submissions.update_one(
+        {"submission_id": submission_id},
+        {"$set": {
+            "status": "rejected",
+            "reject_reason": reason,
+            "rejected_at": datetime.now(timezone.utc).isoformat(),
+        }},
+    )
+    return {"ok": True, "status": "rejected", "submission_id": submission_id, "reason": reason}
+
+@api_router.delete("/admin/submissions/{submission_id}")
+async def delete_submission(submission_id: str, _=Depends(require_admin)):
+    res = await db.submissions.delete_one({"submission_id": submission_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    return {"ok": True}
+
+# -----------------------------
 # WhatsApp Reminder (collect only)
 # -----------------------------
 @api_router.post("/events/{event_id}/whatsapp-remind")
@@ -953,6 +1176,10 @@ async def whatsapp_remind(event_id: str, payload: WhatsAppReminder, user=Depends
 # -----------------------------
 # Seed
 # -----------------------------
+# NOTE: seed demo events deliberately store image_url as "" — stock/Unsplash
+# URLs must NEVER be persisted as an event's primary image. The frontend
+# fallback pool (frontend/src/lib/image-fallback.js) provides render-time
+# imagery when image_url is empty.
 SEED_EVENTS = [
     {
         "title": "Graphic Design Workshop",
@@ -960,7 +1187,7 @@ SEED_EVENTS = [
         "mode": "Offline",
         "short_description": "Hands-on session covering Graphic Design fundamentals, Color Theory & Communication.",
         "full_description": "Learn how every business communicates visually. This hands-on workshop covers Graphic Design fundamentals, Color Theory, and Communication design. You'll leave with a portfolio-ready project.",
-        "image_url": "https://images.unsplash.com/photo-1498075702571-ecb018f3752d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MTN8MHwxfHNlYXJjaHwyfHxhcnQlMjBza2V0Y2glMjB3b3Jrc2hvcCUyMGdyb3VwfGVufDB8fHx8MTc4NDE4MzIwOHww&ixlib=rb-4.1.0&q=85",
+        "image_url": "",
         "location": "Indiranagar, Bengaluru",
         "city": "Bangalore",
         "event_date": "2026-05-25",
@@ -982,7 +1209,7 @@ SEED_EVENTS = [
         "mode": "Offline",
         "short_description": "Brainstorm innovative UX solutions to real social problems. Team-based, open to all levels.",
         "full_description": "Brainstorm innovative UX solutions to tackle real social problems. Team-based, open to all skill levels. Mentors from top design studios will be present.",
-        "image_url": "https://images.unsplash.com/photo-1523240795612-9a054b0db644?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxwZW9wbGUlMjBjb2RpbmclMjB0b2dldGhlcnxlbnwwfHx8fDE3ODQxODMyMTN8MA&ixlib=rb-4.1.0&q=85",
+        "image_url": "",
         "location": "Rohini, Delhi",
         "city": "Delhi",
         "event_date": "2026-04-29",
@@ -1004,7 +1231,7 @@ SEED_EVENTS = [
         "mode": "Offline",
         "short_description": "A hands-on session exploring traditional and contemporary jewelry design techniques.",
         "full_description": "A hands-on session exploring traditional and contemporary jewelry design techniques. All materials are provided, take home your very own piece.",
-        "image_url": "https://images.unsplash.com/photo-1515187029135-18ee286d815b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Nzd8MHwxfHNlYXJjaHwyfHxjcmVhdGl2ZSUyMGRlc2lnbiUyMG1lZXR1cHxlbnwwfHx8fDE3ODQxODMyMDh8MA&ixlib=rb-4.1.0&q=85",
+        "image_url": "",
         "location": "Rohini, Delhi",
         "city": "Delhi",
         "event_date": "2026-05-02",

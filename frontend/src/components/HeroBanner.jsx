@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { eventImageHandlers } from "@/lib/image-fallback";
 
 /**
  * Continuous auto-sliding hero banner — image-only, no CTA button.
  * The whole banner is clickable and navigates to the event detail page (no auth required).
  * Supports drag/swipe on mouse & touch.
  */
-const HeroBanner = ({ events }) => {
+const HeroBanner = ({ events, imageMap, usedImages }) => {
   const navigate = useNavigate();
   const [idx, setIdx] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -94,7 +95,7 @@ const HeroBanner = ({ events }) => {
                 aria-label={`Open ${ev.title}`}
               >
                 <img
-                  src={ev.image_url}
+                  {...eventImageHandlers(ev, usedImages, imageMap?.get(ev.event_id))}
                   alt={ev.title}
                   draggable={false}
                   className="w-full h-full object-cover pointer-events-none"

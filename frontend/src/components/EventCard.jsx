@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { pickEventImage } from "@/lib/image-fallback";
+import { eventImageHandlers } from "@/lib/image-fallback";
 
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
@@ -19,7 +19,7 @@ const categoryColor = (cat) => {
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
 };
 
-const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImages }) => {
+const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImages, imageSrc }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [saved, setSaved] = useState(initialSaved);
@@ -106,7 +106,7 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImage
         {/* Image — clean, only copy/save icons overlaid */}
         <div className="relative aspect-video overflow-hidden bg-[#280049]">
           <img
-            src={pickEventImage(event, usedImages)}
+            {...eventImageHandlers(event, usedImages, imageSrc)}
             alt={event.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"

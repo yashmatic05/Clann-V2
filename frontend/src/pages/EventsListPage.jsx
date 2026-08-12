@@ -6,7 +6,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 import { MapPin, Calendar, ChevronLeft } from "lucide-react";
 import { registrationStatus } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { pickEventImage } from "@/lib/image-fallback";
+import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
 
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
@@ -19,7 +19,7 @@ const categoryColor = (cat) => {
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
 };
 
-const RelatedEventCard = ({ event, usedImages }) => {
+const RelatedEventCard = ({ event, usedImages, imageSrc }) => {
   const navigate = useNavigate();
   const status = registrationStatus(event);
 
@@ -28,7 +28,7 @@ const RelatedEventCard = ({ event, usedImages }) => {
       onClick={() => navigate(`/event/${event.event_id}`)}
       className="w-full h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer flex flex-col"
     >
-      <img src={pickEventImage(event, usedImages)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
+      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
       <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
@@ -88,7 +88,10 @@ const EventsListPage = () => {
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const usedImages = useMemo(() => new Set(), [events]);
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages(events),
+    [events],
+  );
 
   useEffect(() => {
     (async () => {
@@ -175,7 +178,7 @@ const EventsListPage = () => {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {events.map((ev) => (
-              <RelatedEventCard key={ev.event_id} event={ev} usedImages={usedImages} />
+              <RelatedEventCard key={ev.event_id} event={ev} usedImages={usedImages} imageSrc={imageMap.get(ev.event_id)} />
             ))}
           </div>
         )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
@@ -10,7 +10,8 @@ import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import Footer from "@/components/Footer";
 import MobileEventFeed from "@/components/MobileEventFeed";
 import { useAuth } from "@/context/AuthContext";
-import { Landmark } from "lucide-react";
+import { assignEventImages } from "@/lib/image-fallback";
+import { Landmark, Megaphone } from "lucide-react";
 
 const MODES = ["Both", "Online", "Offline"];
 
@@ -92,7 +93,14 @@ const Home = () => {
     return events;
   }, [events, mode]);
 
-  const usedImages = useMemo(() => new Set(), [filteredEvents, govEvents]);
+  // One shared image assignment for every event visible on this page (hero
+  // slides, desktop grid, government grid, mobile feed): real images win on
+  // their first occurrence; duplicates and blank image_urls get a stock
+  // fallback that never repeats within the page.
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages([...bannerPool, ...govEvents]),
+    [bannerPool, govEvents],
+  );
 
   const isAll = category === "All";
 
@@ -117,7 +125,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6 overflow-x-hidden max-w-full">
       <Navbar />
-      <HeroBanner events={featuredBanners} />
+      <HeroBanner events={featuredBanners} imageMap={imageMap} usedImages={usedImages} />
       <WhatsAppReminderBar testid="whatsapp-bar-home" />
 
       {/* Row 1 — Online / Offline mode toggle with live event counts */}
@@ -168,6 +176,7 @@ const Home = () => {
                 index={i}
                 initialSaved={savedIds.has(ev.event_id)}
                 usedImages={usedImages}
+                imageSrc={imageMap.get(ev.event_id)}
               />
             ))}
           </div>
@@ -193,6 +202,7 @@ const Home = () => {
                 index={500 + i}
                 initialSaved={savedIds.has(ev.event_id)}
                 usedImages={usedImages}
+                imageSrc={imageMap.get(ev.event_id)}
               />
             ))}
           </div>
@@ -201,8 +211,32 @@ const Home = () => {
 
       {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
       {isAll && !loading && (
-        <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} usedImages={usedImages} />
+        <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} usedImages={usedImages} imageMap={imageMap} />
       )}
+
+      {/* Organizer CTA — public submission workflow */}
+      <section data-testid="organizer-cta" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20">
+        <div className="rounded-2xl border border-[#46176D]/40 bg-[#18002C] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#F84E00] shrink-0">
+              <Megaphone size={22} />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">Organizing an event in Delhi?</h2>
+              <p className="text-sm text-[#727272] mt-1 max-w-md">
+                List it on Clann — our team reviews every submission before it goes live on the platform.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/organizer"
+            data-testid="organizer-cta-btn"
+            className="shrink-0 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] text-white rounded-full px-6 py-3 text-sm font-bold transition-colors"
+          >
+            Submit Your Event
+          </Link>
+        </div>
+      </section>
 
       <Footer />
       <BottomTabBar />

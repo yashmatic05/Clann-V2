@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
+import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
 import { ChevronLeft, ChevronRight, CalendarDays, ExternalLink } from "lucide-react";
 
 const monthName = (m) => new Date(2020, m, 1).toLocaleString("en-US", { month: "long" });
@@ -56,7 +57,15 @@ const CalendarPage = () => {
   const dateKey = (d) => `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-  const selectedEvents = selectedDate ? (eventsByDate[selectedDate] || []) : [];
+  const selectedEvents = useMemo(
+    () => (selectedDate ? (eventsByDate[selectedDate] || []) : []),
+    [selectedDate, eventsByDate],
+  );
+  // Display-only image assignment for the day's event thumbnails.
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages(selectedEvents),
+    [selectedEvents],
+  );
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
@@ -141,7 +150,7 @@ const CalendarPage = () => {
                     data-testid={`cal-event-${ev.event_id}`}
                     className="flex items-center gap-3 bg-[#18002C] border border-[#46176D]/30 hover:border-[#46176D] rounded-lg p-3 transition-colors group"
                   >
-                    <img src={ev.image_url} alt="" className="w-12 h-12 rounded-lg object-cover"/>
+                    <img {...eventImageHandlers(ev, usedImages, imageMap.get(ev.event_id))} alt="" className="w-12 h-12 rounded-lg object-cover"/>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate group-hover:text-[#F84E00] transition-colors">{ev.title}</p>
                       <p className="text-[11px] text-[#727272]">{ev.start_time} – {ev.end_time} · {ev.location}</p>
