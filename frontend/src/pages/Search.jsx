@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
 import { useAuth } from "@/context/AuthContext";
+import { assignEventImages } from "@/lib/image-fallback";
 
 const Search = () => {
   const { user } = useAuth();
@@ -15,7 +16,10 @@ const Search = () => {
   const [savedIds, setSavedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const usedImages = useMemo(() => new Set(), [results]);
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages(results),
+    [results],
+  );
 
   // Load saved events for current user
   useEffect(() => {
@@ -109,6 +113,7 @@ const Search = () => {
               index={i}
               initialSaved={savedIds.has(ev.event_id)}
               usedImages={usedImages}
+              imageSrc={imageMap.get(ev.event_id)}
             />
           ))}
         </div>

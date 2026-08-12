@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { pickEventImage } from "@/lib/image-fallback";
+import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 
 const categoryColor = (cat) => {
@@ -24,7 +24,7 @@ const categoryColor = (cat) => {
   return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
 };
 
-const RelatedEventCard = ({ event, savedIds, usedImages }) => {
+const RelatedEventCard = ({ event, savedIds, usedImages, imageSrc }) => {
   const navigate = useNavigate();
   const status = registrationStatus(event);
 
@@ -33,7 +33,7 @@ const RelatedEventCard = ({ event, savedIds, usedImages }) => {
       onClick={() => navigate(`/event/${event.event_id}`)}
       className="flex-shrink-0 w-[200px] h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer flex flex-col"
     >
-      <img src={pickEventImage(event, usedImages)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
+      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
       <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
@@ -93,7 +93,12 @@ const EventDetail = () => {
   const [related, setRelated] = useState([]);
   const [saved, setSaved] = useState(false);
   const [remindOn, setRemindOn] = useState(false);
-  const usedImages = useMemo(() => new Set(), [related]);
+  // One assignment across the main banner + related cards so real images win
+  // and stock fallbacks never repeat on this page.
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages(event ? [event, ...(related || [])] : []),
+    [event, related],
+  );
 
   useEffect(() => {
     (async () => {
@@ -223,7 +228,7 @@ const EventDetail = () => {
           )}
 
           <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[#18002C]">
-            <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
+            <img {...eventImageHandlers(event, usedImages, imageMap.get(event.event_id))} alt={event.title} className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D]/90 via-transparent to-transparent" />
             <div className="absolute top-4 right-4 flex gap-2">
               <button data-testid="detail-share" onClick={share} title="Share event" className="p-2.5 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors">
@@ -389,7 +394,7 @@ const EventDetail = () => {
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {related.map((r) => (
-                <RelatedEventCard key={r.event_id} event={r} usedImages={usedImages} />
+                <RelatedEventCard key={r.event_id} event={r} usedImages={usedImages} imageSrc={imageMap.get(r.event_id)} />
               ))}
             </div>
           </div>

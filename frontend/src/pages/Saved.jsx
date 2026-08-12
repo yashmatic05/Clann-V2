@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
+import { assignEventImages } from "@/lib/image-fallback";
 import { Bookmark } from "lucide-react";
 
 const Saved = () => {
@@ -13,7 +14,10 @@ const Saved = () => {
   const { user, loading } = useAuth();
   const [events, setEvents] = useState([]);
   const [ready, setReady] = useState(false);
-  const usedImages = useMemo(() => new Set(), [events]);
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages(events),
+    [events],
+  );
 
   useEffect(() => {
     if (loading) return;
@@ -65,6 +69,7 @@ const Saved = () => {
                 initialSaved={true}
                 onUnsave={handleUnsave}
                 usedImages={usedImages}
+                imageSrc={imageMap.get(ev.event_id)}
               />
             ))}
           </div>

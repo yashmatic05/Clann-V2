@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 const LINE_1 = "Explore More!";
 const LINE_2 = "Upskill More!";
@@ -94,7 +95,16 @@ const Footer = () => {
 
       <div className="relative z-10 border-t border-[#280049] bg-[#0D0D0D]">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] sm:text-xs text-[#727272]">
-          <p>© {new Date().getFullYear()} Clann. Made with love in Delhi.</p>
+          <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-4">
+            <p>© {new Date().getFullYear()} Clann. Made with love in Delhi.</p>
+            <Link
+              to="/organizer"
+              data-testid="footer-organizer-link"
+              className="tracking-widest uppercase font-semibold text-[#BF72FF] hover:text-white transition-colors"
+            >
+              List Your Event
+            </Link>
+          </div>
           <p className="tracking-widest uppercase font-semibold text-[#BF72FF]">Explore More · Upskill More</p>
         </div>
       </div>

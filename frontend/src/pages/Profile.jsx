@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -11,6 +11,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import { priceLabel, priceBadgeClass } from "@/lib/event-utils";
+import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
 
 const MAX = 300;
 
@@ -63,7 +64,7 @@ const registrationStatus = (event) => {
 /* SavedEventCard — exact compact design from Home horizontal rows,    */
 /* but bookmark triggers the existing unsave confirmation flow.        */
 /* ------------------------------------------------------------------ */
-const SavedEventCard = ({ event, index = 0, onUnsave }) => {
+const SavedEventCard = ({ event, index = 0, onUnsave, usedImages, imageSrc }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [removing, setRemoving] = useState(false);
@@ -117,7 +118,7 @@ const SavedEventCard = ({ event, index = 0, onUnsave }) => {
         {/* Image — fixed 100px */}
         <div className="relative h-[100px] shrink-0 overflow-hidden bg-[#280049]">
           <img
-            src={event.image_url}
+            {...eventImageHandlers(event, usedImages, imageSrc)}
             alt={event.title}
             loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -207,6 +208,11 @@ const Profile = () => {
   const navigate = useNavigate();
 
   const [saved, setSaved] = useState([]);
+  // Display-only image assignment for the saved-events row.
+  const { map: imageMap, used: usedImages } = useMemo(
+    () => assignEventImages(saved),
+    [saved],
+  );
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
@@ -308,6 +314,8 @@ const Profile = () => {
                   event={ev}
                   index={i}
                   onUnsave={removeSaved}
+                  usedImages={usedImages}
+                  imageSrc={imageMap.get(ev.event_id)}
                 />
               ))}
             </div>

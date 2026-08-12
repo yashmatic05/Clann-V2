@@ -16,6 +16,7 @@ import Profile from "@/pages/Profile";
 import CalendarPage from "@/pages/CalendarPage";
 import Search from "@/pages/Search";
 import EventsListPage from "@/pages/EventsListPage";
+import OrganizerSubmit from "@/pages/OrganizerSubmit";
 
 const TOAST_OPTIONS = {
   style: {
@@ -50,6 +51,7 @@ function AppRouter() {
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/search" element={<Search />} />
         <Route path="/events" element={<EventsListPage />} />
+        <Route path="/organizer" element={<OrganizerSubmit />} />
         <Route path="/admin-clann-secret" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="*" element={<Home />} />

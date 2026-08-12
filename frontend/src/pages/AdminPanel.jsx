@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Star, LogOut, Calendar, Users, TicketCheck, MessageSquare, Upload, FileSpreadsheet, Download, Wand2, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, Star, LogOut, Calendar, Users, TicketCheck, MessageSquare, Upload, FileSpreadsheet, Download, Wand2, Loader2, ClipboardList, Check, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -250,6 +250,9 @@ const AdminPanel = () => {
   const [stats, setStats] = useState({ total_events: 0, total_users: 0, total_organizers: 0 });
   const [events, setEvents] = useState([]);
   const [feedback, setFeedback] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
+  const [subFilter, setSubFilter] = useState("pending");
+  const [subAction, setSubAction] = useState(null); // submission_id currently being approved/rejected
   const [tab, setTab] = useState("events");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -300,12 +303,13 @@ const AdminPanel = () => {
 
   const loadData = async () => {
     try {
-      const [s, e, f] = await Promise.all([
+      const [s, e, f, subs] = await Promise.all([
         api.get("/admin/stats"),
         api.get("/events"),
         api.get("/admin/feedback").catch(() => ({ data: [] })),
+        api.get("/admin/submissions").catch(() => ({ data: [] })),
       ]);
-      setStats(s.data); setEvents(e.data); setFeedback(f.data || []);
+      setStats(s.data); setEvents(e.data); setFeedback(f.data || []); setSubmissions(subs.data || []);
     } catch (err) {
       if (err.response?.status === 401) { localStorage.removeItem("clann_admin_token"); navigate("/admin-clann-secret"); }
     }
@@ -365,7 +369,9 @@ const AdminPanel = () => {
   };
 
   const save = async () => {
-    if (!form.title || !form.image_url || !form.external_link || !form.event_date) {
+    // image_url is OPTIONAL — events without a real image get an automatic
+    // stock fallback at render time. Never require (or auto-fill) an image.
+    if (!form.title || !form.external_link || !form.event_date) {
       toast.error("Please fill required fields"); return;
     }
     let hpCategory = "";
@@ -455,6 +461,44 @@ const AdminPanel = () => {
 
   const logout = () => { localStorage.removeItem("clann_admin_token"); navigate("/admin-clann-secret"); };
 
+  const approveSubmission = async (id) => {
+    if (subAction) return;
+    setSubAction(id);
+    try {
+      const { data } = await api.post(`/admin/submissions/${id}/approve`);
+      toast.success(`Event published — "${data.event?.title || "new event"}" is live`);
+      loadData();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Approval failed");
+    } finally {
+      setSubAction(null);
+    }
+  };
+
+  const rejectSubmission = async (id) => {
+    const reason = window.prompt("Reason for rejection (optional, shown to the organizer):", "");
+    if (reason === null) return; // cancelled
+    if (subAction) return;
+    setSubAction(id);
+    try {
+      await api.post(`/admin/submissions/${id}/reject`, { reason });
+      toast.success("Submission rejected");
+      loadData();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      toast.error(typeof detail === "string" ? detail : "Rejection failed");
+    } finally {
+      setSubAction(null);
+    }
+  };
+
+  const deleteSubmission = async (id) => {
+    if (!window.confirm("Delete this submission permanently?")) return;
+    try { await api.delete(`/admin/submissions/${id}`); toast.success("Submission deleted"); loadData(); }
+    catch { toast.error("Delete failed"); }
+  };
+
   const toggleAudience = (a) => setForm((f) => ({ ...f, recommended_for: f.recommended_for.includes(a) ? f.recommended_for.filter((x) => x !== a) : [...f.recommended_for, a] }));
 
   const handleGenerateTags = async () => {
@@ -487,7 +531,10 @@ const AdminPanel = () => {
       title: "Sample Workshop", category: "Workshop", mode: "Offline",
       short_description: "Learn something amazing in 2 hours.",
       full_description: "Full description shown on the event detail page.",
-      image_url: "https://images.unsplash.com/photo-1523240795612-9a054b0db644",
+      // image_url is OPTIONAL. Leave it blank when there is no real event
+      // image — the app shows an automatic stock fallback. Do NOT paste a
+      // stock/Unsplash URL here as a stand-in for a real event image.
+      image_url: "",
       location: "Indiranagar, Bengaluru", city: "Bangalore",
       event_date: "2026-06-15", start_time: "10:00", end_time: "13:00",
       registration_deadline: "2026-06-10",
@@ -521,7 +568,9 @@ const AdminPanel = () => {
       let ok = 0, duplicate_count = 0, failed = 0;
       for (const raw of rows) {
         const payload = normalizeRow(raw);
-        if (!payload.title || !payload.image_url || !payload.external_link || !payload.event_date) {
+        // Required: title, external_link, event_date. image_url is OPTIONAL —
+        // blank rows import fine and get a stock fallback at render time.
+        if (!payload.title || !payload.external_link || !payload.event_date) {
           failed++; continue;
         }
         try {
@@ -659,6 +708,9 @@ const AdminPanel = () => {
               <TabsTrigger data-testid="admin-tab-feedback" value="feedback" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
                 <MessageSquare size={12} className="mr-1.5"/> Feedback ({feedback.length})
               </TabsTrigger>
+              <TabsTrigger data-testid="admin-tab-submissions" value="submissions" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
+                <ClipboardList size={12} className="mr-1.5"/> Submissions ({submissions.filter((s) => s.status === "pending").length})
+              </TabsTrigger>
               <TabsTrigger data-testid="admin-tab-categories" value="categories" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
                 Manage Categories ({homepageCategories.length})
               </TabsTrigger>
@@ -680,7 +732,7 @@ const AdminPanel = () => {
                   <div className="flex-1 text-center md:text-left">
                     <h3 className="text-white font-bold">Bulk import events</h3>
                     <p className="text-xs text-[#727272] mt-0.5">
-                      Drag & drop an <span className="text-[#BF72FF] font-semibold">.xlsx</span> or <span className="text-[#BF72FF] font-semibold">.csv</span> file — every row becomes a new event card.
+                      Drag & drop an <span className="text-[#BF72FF] font-semibold">.xlsx</span> or <span className="text-[#BF72FF] font-semibold">.csv</span> file — every row becomes a new event card. Required columns: title, external_link, event_date. <span className="text-[#BF72FF] font-semibold">image_url is optional</span> — rows without a real event image get an automatic fallback image.
                     </p>
                     {uploadStats && (
                       <p className="mt-2 text-[11px]" data-testid="bulk-stats">
@@ -859,6 +911,130 @@ const AdminPanel = () => {
               </div>
             </TabsContent>
 
+            <TabsContent value="submissions">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <h2 className="text-2xl font-black text-white tracking-tight">Organizer Submissions</h2>
+                <div className="inline-flex bg-[#18002C] border border-[#46176D]/40 rounded-full p-1 w-fit" data-testid="submission-filters">
+                  {["pending", "approved", "rejected"].map((f) => (
+                    <button
+                      key={f}
+                      data-testid={`sub-filter-${f}`}
+                      onClick={() => setSubFilter(f)}
+                      className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full transition-colors ${
+                        subFilter === f ? "bg-[#F84E00] text-white" : "text-[#BF72FF] hover:text-white"
+                      }`}
+                    >
+                      {f} ({submissions.filter((s) => s.status === f).length})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {submissions.length === 0 ? (
+                <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-10 text-center">
+                  <ClipboardList size={28} className="mx-auto text-[#46176D] mb-2" />
+                  <p className="text-sm text-[#727272]">No submissions yet. Organizers can propose events via the public "List Your Event" page.</p>
+                </div>
+              ) : (
+                <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm" data-testid="submissions-table">
+                      <thead className="bg-[#280049] text-[#BF72FF] uppercase tracking-widest text-[10px]">
+                        <tr>
+                          <th className="text-left px-4 py-3">Organizer</th>
+                          <th className="text-left px-4 py-3">Event</th>
+                          <th className="text-left px-4 py-3">Date</th>
+                          <th className="text-left px-4 py-3">Status</th>
+                          <th className="text-left px-4 py-3">Submitted</th>
+                          <th className="text-right px-4 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#46176D]/30">
+                        {submissions
+                          .filter((s) => s.status === subFilter)
+                          .map((s) => (
+                            <tr key={s.submission_id} data-testid={`submission-row-${s.submission_id}`} className="hover:bg-[#280049]/40 transition-colors align-top">
+                              <td className="px-4 py-3 text-white font-medium whitespace-nowrap">
+                                {s.organizer_name}
+                                <div className="text-[10px] text-[#727272] font-normal break-all">{s.organizer_email}</div>
+                                {s.organizer_phone && <div className="text-[10px] text-[#727272] font-normal">{s.organizer_phone}</div>}
+                              </td>
+                              <td className="px-4 py-3 max-w-xs">
+                                <div className="text-white font-medium">{s.title}</div>
+                                <div className="text-[10px] text-[#BF72FF] uppercase tracking-widest font-bold mt-0.5">{s.category} · {s.mode}</div>
+                                {s.short_description && <div className="text-[11px] text-[#727272] mt-1 line-clamp-2">{s.short_description}</div>}
+                                {s.created_event_id && (
+                                  <Link
+                                    to={`/event/${s.created_event_id}`}
+                                    className="inline-block mt-1.5 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                  >
+                                    View live event →
+                                  </Link>
+                                )}
+                                {s.status === "rejected" && s.reject_reason && (
+                                  <div className="text-[11px] text-red-300 mt-1">Reason: {s.reject_reason}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-white/80 whitespace-nowrap">
+                                {s.event_date}
+                                <div className="text-[10px] text-[#727272]">{s.start_time} – {s.end_time}</div>
+                                {s.city && <div className="text-[10px] text-[#727272]">{s.city}</div>}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest border ${
+                                  s.status === "pending" ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
+                                  : s.status === "approved" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+                                  : "bg-red-400/10 text-red-400 border-red-400/30"
+                                }`}>
+                                  {s.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-white/70 text-xs whitespace-nowrap">
+                                {s.submitted_at ? new Date(s.submitted_at).toLocaleString() : "—"}
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                {s.status === "pending" && (
+                                  <>
+                                    <button
+                                      onClick={() => approveSubmission(s.submission_id)}
+                                      disabled={!!subAction}
+                                      data-testid={`approve-${s.submission_id}`}
+                                      className="inline-flex items-center gap-1 bg-[#F84E00] hover:bg-[#D14200] disabled:opacity-60 text-white rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors mr-1.5"
+                                    >
+                                      {subAction === s.submission_id ? <Loader2 size={11} className="animate-spin"/> : <Check size={11}/>}
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => rejectSubmission(s.submission_id)}
+                                      disabled={!!subAction}
+                                      data-testid={`reject-${s.submission_id}`}
+                                      className="inline-flex items-center gap-1 border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-60 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors mr-1.5"
+                                    >
+                                      <X size={11}/> Reject
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => deleteSubmission(s.submission_id)}
+                                  data-testid={`delete-submission-${s.submission_id}`}
+                                  title="Delete submission"
+                                  className="text-[#727272] hover:text-red-400 p-1.5 transition-colors"
+                                >
+                                  <Trash2 size={14}/>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        {submissions.filter((s) => s.status === subFilter).length === 0 && (
+                          <tr><td colSpan="6" className="text-center py-10 text-[#727272]">No {subFilter} submissions.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="categories">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-black text-white tracking-tight">Manage Homepage Categories</h2>
@@ -968,7 +1144,7 @@ const AdminPanel = () => {
             <Field label="Full Description">
               <textarea data-testid="form-full" rows={4} value={form.full_description} onChange={(e) => setForm({...form, full_description: e.target.value})} className={`${inputCls} resize-y`}/>
             </Field>
-            <Field label="Event Image URL *">
+            <Field label="Event Image URL (optional — leave blank for automatic fallback)">
               <input
                 data-testid="form-image"
                 value={form.image_url}
