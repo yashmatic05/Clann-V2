@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import {
   LogOut, Mail, Phone, MapPin, Building2, Star,
-  Bookmark, Calendar, ChevronRight,
+  Bookmark, Calendar, ChevronRight, Megaphone, Copy,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
@@ -208,6 +208,7 @@ const Profile = () => {
   const navigate = useNavigate();
 
   const [saved, setSaved] = useState([]);
+  const [myEvents, setMyEvents] = useState([]);
   // Display-only image assignment for the saved-events row.
   const { map: imageMap, used: usedImages } = useMemo(
     () => assignEventImages(saved),
@@ -234,6 +235,16 @@ const Profile = () => {
       } catch (err) { console.error("[profile] load saved failed", err); }
     })();
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (loading || !user) return;
+    (async () => {
+      try {
+        const { data } = await api.get("/submissions/mine");
+        setMyEvents(data);
+      } catch (err) { console.error("[profile] load organized events failed", err); }
+    })();
+  }, [user, loading]);
 
   if (!loading && !user) { return null; }
   if (!user) return <div className="min-h-screen bg-[#0D0D0D]"/>;
@@ -317,6 +328,65 @@ const Profile = () => {
                   usedImages={usedImages}
                   imageSrc={imageMap.get(ev.event_id)}
                 />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My Organized Events */}
+        <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6" data-testid="profile-organized-section">
+          <div className="flex items-center gap-2 mb-4">
+            <Megaphone className="text-[#F84E00]" size={18}/>
+            <h2 className="text-xl font-black text-white tracking-tight">My Organized Events</h2>
+            <Link to="/organizer" className="ml-auto text-xs font-bold uppercase tracking-widest text-[#BF72FF] hover:text-white transition-colors">
+              + Submit New
+            </Link>
+          </div>
+          {myEvents.length === 0 ? (
+            <div className="py-8 text-center" data-testid="profile-organized-empty">
+              <p className="text-white font-bold">No events submitted yet</p>
+              <p className="text-xs text-[#727272] mt-1">Hosting something? List it and track its review status here.</p>
+            </div>
+          ) : (
+            <div className="space-y-3" data-testid="profile-organized-list">
+              {myEvents.map((s) => (
+                <div key={s.submission_id} className="bg-[#0D0D0D] border border-[#46176D]/30 rounded-xl p-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <span className="text-sm font-bold text-white">{s.title}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest border rounded-full px-3 py-1 ${
+                      s.status === "pending" ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
+                      : s.status === "approved" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+                      : "bg-red-400/10 text-red-400 border-red-400/30"
+                    }`}>
+                      {s.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 text-[11px] text-[#727272] font-mono">
+                    {s.submission_id}
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try { await navigator.clipboard.writeText(s.submission_id); toast.success("Submission ID copied"); }
+                        catch { toast.error("Failed to copy"); }
+                      }}
+                      className="text-[#BF72FF] hover:text-white transition-colors"
+                      aria-label="Copy submission ID"
+                    >
+                      <Copy size={12} />
+                    </button>
+                  </div>
+                  {s.status === "approved" && s.created_event_id && (
+                    <Link to={`/event/${s.created_event_id}`} className="mt-2 inline-block text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+                      View live event →
+                    </Link>
+                  )}
+                  {s.status === "rejected" && s.reject_reason && (
+                    <p className="mt-2 text-xs text-[#727272]">Reason: <span className="text-white/90">{s.reject_reason}</span></p>
+                  )}
+                  {s.admin_note && (
+                    <p className="mt-2 text-xs text-[#BF72FF]">Note from Clann team: <span className="text-white/90">{s.admin_note}</span></p>
+                  )}
+                </div>
               ))}
             </div>
           )}

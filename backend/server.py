@@ -1067,9 +1067,18 @@ async def submission_status(submission_id: str, email: str):
         "status": doc["status"],
         "title": doc.get("title", ""),
         "reject_reason": doc.get("reject_reason"),
+        "admin_note": doc.get("admin_note"),
         "created_event_id": doc.get("created_event_id"),
         "submitted_at": doc.get("submitted_at"),
     }
+
+@api_router.get("/submissions/mine")
+async def my_submissions(user=Depends(require_user)):
+    email = (user.get("email") or "").strip().lower()
+    if not email:
+        return []
+    docs = await db.submissions.find({"organizer_email": email}, {"_id": 0}).sort("submitted_at", -1).to_list(100)
+    return docs
 
 @api_router.get("/admin/submissions")
 async def admin_list_submissions(status: Optional[str] = None, _=Depends(require_admin)):
@@ -1149,6 +1158,18 @@ async def reject_submission(submission_id: str, payload: SubmissionReject, _=Dep
         }},
     )
     return {"ok": True, "status": "rejected", "submission_id": submission_id, "reason": reason}
+
+@api_router.post("/admin/submissions/{submission_id}/note")
+async def note_submission(submission_id: str, payload: SubmissionReject, _=Depends(require_admin)):
+    sub = await db.submissions.find_one({"submission_id": submission_id}, {"_id": 0})
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    note = (payload.reason or "").strip()
+    await db.submissions.update_one(
+        {"submission_id": submission_id},
+        {"$set": {"admin_note": note}},
+    )
+    return {"ok": True, "admin_note": note}
 
 @api_router.delete("/admin/submissions/{submission_id}")
 async def delete_submission(submission_id: str, _=Depends(require_admin)):

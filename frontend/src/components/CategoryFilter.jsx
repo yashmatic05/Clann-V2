@@ -1,4 +1,5 @@
 import React from "react";
+import { motion } from "framer-motion";
 
 export const CATEGORIES = [
   "All", "Workshops", "Meetups", "Hackathons", "Conferences", "Walks", "Art & Sketch",
@@ -28,13 +29,20 @@ const CategoryFilter = ({ active, onChange }) => {
               key={c}
               data-testid={`chip-${c.toLowerCase().replace(/\s|&/g, '-')}`}
               onClick={() => onChange(c)}
-              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              className={`shrink-0 relative rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                 isActive
-                  ? "bg-[#F84E00] text-white"
+                  ? "text-white"
                   : "bg-transparent text-[#BF72FF]/80 hover:text-white hover:bg-[#280049]/60"
               }`}
             >
-              {c}
+              {isActive && (
+                <motion.span
+                  layoutId="categoryActivePill"
+                  transition={{ type: "tween", ease: "easeInOut", duration: 0.25 }}
+                  className="absolute inset-0 rounded-full bg-[#F84E00]"
+                />
+              )}
+              <span className="relative z-10">{c}</span>
             </button>
           );
         })}

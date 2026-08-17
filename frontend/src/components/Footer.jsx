@@ -83,7 +83,7 @@ const Footer = () => {
       {/* Monument row — always anchored at bottom, never shifts */}
       <div className="relative w-full">
         <img
-          src="/brand/monuments.png"
+          src="/brand/categories/monuments.png"
           alt=""
           aria-hidden="true"
           data-testid="footer-monuments"
@@ -94,8 +94,8 @@ const Footer = () => {
       </div>
 
       <div className="relative z-10 border-t border-[#280049] bg-[#0D0D0D]">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] sm:text-xs text-[#727272]">
-          <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-4">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 pt-7 pb-5 flex flex-row flex-wrap items-center justify-center sm:justify-between gap-x-4 gap-y-1.5 text-[10px] sm:text-xs text-[#727272]">
+          <div className="flex flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <p>© {new Date().getFullYear()} Clann. Made with love in Delhi.</p>
             <Link
               to="/organizer"

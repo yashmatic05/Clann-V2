@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import Footer from "@/components/Footer";
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 const startGoogleAuth = () => {
@@ -27,9 +28,9 @@ const Auth = () => {
 
       <div className="w-full max-w-md bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6">
         <Tabs value={tab} onValueChange={setTab} className="w-full">
-          <TabsList className="grid grid-cols-2 bg-[#280049] rounded-full p-1 mb-6">
-            <TabsTrigger data-testid="tab-signup" value="signup" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-sm">Sign Up</TabsTrigger>
-            <TabsTrigger data-testid="tab-login" value="login" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-sm">Login</TabsTrigger>
+          <TabsList className="grid grid-cols-2 bg-[#280049] rounded-full p-1 mb-6 h-auto">
+            <TabsTrigger data-testid="tab-signup" value="signup" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-sm py-3">Sign Up</TabsTrigger>
+            <TabsTrigger data-testid="tab-login" value="login" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-sm py-3">Login</TabsTrigger>
           </TabsList>
 
           <TabsContent value="signup" className="space-y-4">
@@ -64,6 +65,10 @@ const Auth = () => {
       </div>
 
       <p className="mt-8 text-xs text-[#727272]">Are you the admin? <Link to="/admin-clann-secret" className="text-[#BF72FF] hover:text-white transition-colors" data-testid="admin-hint-link">Admin login →</Link></p>
+
+      <div className="w-full self-stretch">
+        <Footer />
+      </div>
     </div>
   );
 };
