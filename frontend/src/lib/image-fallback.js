@@ -1,3 +1,11 @@
+/**
+ * Minimum width-to-height ratio required for a real event image to count
+ * as a valid landscape/horizontal image. 16:9 ≈ 1.78 and 4:3 ≈ 1.33 posters
+ * pass; square (≈ 1.0) and portrait (< 1.0) images are rejected and swapped
+ * for a stock landscape fallback.
+ */
+export const MIN_LANDSCAPE_RATIO = 1.2;
+
 export const STOCK_IMAGE_POOL = [
   "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1600&h=900&q=80",
   "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&h=900&q=80",
@@ -106,6 +114,22 @@ export const eventImageHandlers = (event, usedSet, preferredSrc) => {
       const fallback = pickStockImage(event, usedSet);
       if (e && e.currentTarget && e.currentTarget.src !== fallback) {
         e.currentTarget.src = fallback;
+      }
+    },
+    onLoad: (e) => {
+      const img = e && e.currentTarget;
+      if (!img) return;
+      // Stock pool images are pre-vetted landscape; never re-validate them
+      // (avoids any risk of triggering an infinite swap loop when a fallback
+      // happens to be flagged by another reviewer rule later).
+      if (STOCK_IMAGE_POOL.includes(img.src)) return;
+      const { naturalWidth, naturalHeight } = img;
+      if (!naturalWidth || !naturalHeight) return;
+      if (naturalWidth / naturalHeight < MIN_LANDSCAPE_RATIO) {
+        const fallback = pickStockImage(event, usedSet);
+        if (img.src !== fallback) {
+          img.src = fallback;
+        }
       }
     },
   };

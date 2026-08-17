@@ -16,7 +16,7 @@ api.interceptors.request.use((config) => {
     config.headers = config.headers || {};
     // Only attach for admin-scoped routes to avoid leaking
     if (config.url.startsWith("/admin") ||
-        (["post", "put", "delete"].includes((config.method || "").toLowerCase()) &&
+        (["get", "post", "put", "delete"].includes((config.method || "").toLowerCase()) &&
          config.url.startsWith("/events"))) {
       config.headers["X-Admin-Token"] = adminToken;
     }

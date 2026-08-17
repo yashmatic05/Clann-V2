@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import {
-  Megaphone,
+  Copy,
   Loader2,
   CheckCircle2,
   XCircle,
@@ -50,6 +50,7 @@ const STATUS_LABELS = {
 
 const OrganizerSubmit = () => {
   const [form, setForm] = useState(emptyForm);
+  const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(null); // {submission_id, ...} from POST /api/submissions
   const [trackId, setTrackId] = useState("");
@@ -58,18 +59,39 @@ const OrganizerSubmit = () => {
   const [trackResult, setTrackResult] = useState(null); // {status, title, reject_reason, ...}
   const [trackError, setTrackError] = useState("");
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  // Pre-fill the tracker from the last successful submission (survives back-navigation).
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("clann_last_submission") || "null");
+      if (saved && saved.submission_id && saved.organizer_email) {
+        setTrackId(saved.submission_id);
+        setTrackEmail(saved.organizer_email);
+      }
+    } catch {}
+  }, []);
+
+  const set = (key) => (e) => {
+    setForm((f) => ({ ...f, [key]: e.target.value }));
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+  };
 
   const submit = async () => {
-    if (!form.organizer_name.trim() || !form.organizer_email.trim()) {
-      toast.error("Please enter your name and email"); return;
+    const nextErrors = {};
+    if (!form.organizer_name.trim()) nextErrors.organizer_name = "Your name is required";
+    if (!form.organizer_email.trim()) {
+      nextErrors.organizer_email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+.[^\s@]+$/.test(form.organizer_email.trim())) {
+      nextErrors.organizer_email = "Enter a valid email address";
     }
-    if (!form.title.trim() || !form.short_description.trim()) {
-      toast.error("Event title and short description are required"); return;
+    if (!form.title.trim()) nextErrors.title = "Event title is required";
+    if (!form.short_description.trim()) nextErrors.short_description = "Short description is required";
+    if (!form.event_date) nextErrors.event_date = "Event date is required";
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      toast.error("Please fix the highlighted fields");
+      return;
     }
-    if (!form.event_date) {
-      toast.error("Event date is required"); return;
-    }
+    setErrors({});
     setSubmitting(true);
     try {
       const payload = {
@@ -83,6 +105,12 @@ const OrganizerSubmit = () => {
       setTrackEmail(data.organizer_email);
       setTrackResult(null);
       setTrackError("");
+      try {
+        localStorage.setItem("clann_last_submission", JSON.stringify({
+          submission_id: data.submission_id,
+          organizer_email: data.organizer_email,
+        }));
+      } catch {}
       toast.success("Submission received — our team will review it");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
@@ -123,17 +151,11 @@ const OrganizerSubmit = () => {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14">
         {/* Hero */}
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#F84E00] shrink-0">
-            <Megaphone size={22} />
-          </div>
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">List Your Event on Clann</h1>
-            <p className="text-sm text-[#727272] mt-2 max-w-xl">
-              Hosting a workshop, meetup, hackathon or walk in your city? Tell us about it — our team
-              reviews every submission before it goes live. You'll get a submission ID to track progress.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">List Your Event on Clann</h1>
+          <p className="text-sm text-[#727272] mt-2 max-w-xl">
+            Tell us about your event — our team reviews every submission before it goes live.
+          </p>
         </div>
 
         {submitted ? (
@@ -150,7 +172,23 @@ const OrganizerSubmit = () => {
             <div className="mt-4 rounded-xl bg-[#0D0D0D] border border-[#46176D]/40 p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div className="flex-1">
                 <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold">Your submission ID</div>
-                <div data-testid="submission-id" className="text-white font-mono text-sm mt-1">{submitted.submission_id}</div>
+                <div className="flex items-center gap-2 mt-1">
+                  <div data-testid="submission-id" className="text-white font-mono text-sm">{submitted.submission_id}</div>
+                  <button
+                    type="button"
+                    data-testid="copy-submission-id"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(submitted.submission_id);
+                        toast.success("Submission ID copied");
+                      } catch { toast.error("Failed to copy"); }
+                    }}
+                    className="text-[#BF72FF] hover:text-white transition-colors"
+                    aria-label="Copy submission ID"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
               </div>
               <div className="text-[11px] text-[#727272] sm:text-right">
                 Save this ID + your email to check status below.
@@ -169,11 +207,11 @@ const OrganizerSubmit = () => {
           <div className="mt-8 bg-[#18002C] border border-[#46176D]/40 rounded-2xl p-5 sm:p-7 space-y-5">
             <h2 className="text-lg font-black text-white tracking-tight">Organizer details</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Your Name *">
-                <input data-testid="org-name" value={form.organizer_name} onChange={set("organizer_name")} placeholder="e.g. Ananya Sharma" className={inputCls} />
+              <Field label="Your Name *" error={errors.organizer_name}>
+                <input data-testid="org-name" value={form.organizer_name} onChange={set("organizer_name")} placeholder="e.g. Ananya Sharma" className={errors.organizer_name ? inputErrorCls : inputCls} />
               </Field>
-              <Field label="Email *">
-                <input data-testid="org-email" type="email" value={form.organizer_email} onChange={set("organizer_email")} placeholder="you@example.com" className={inputCls} />
+              <Field label="Email *" error={errors.organizer_email}>
+                <input data-testid="org-email" type="email" value={form.organizer_email} onChange={set("organizer_email")} placeholder="you@example.com" className={errors.organizer_email ? inputErrorCls : inputCls} />
               </Field>
               <Field label="Phone (optional)">
                 <input data-testid="org-phone" value={form.organizer_phone} onChange={set("organizer_phone")} placeholder="+91 98765 43210" className={inputCls} />
@@ -183,8 +221,8 @@ const OrganizerSubmit = () => {
             <hr className="border-[#46176D]/30" />
 
             <h2 className="text-lg font-black text-white tracking-tight">Event details</h2>
-            <Field label="Event Title *">
-              <input data-testid="sub-title" value={form.title} onChange={set("title")} placeholder="e.g. Design Thinking Bootcamp" className={inputCls} />
+            <Field label="Event Title *" error={errors.title}>
+              <input data-testid="sub-title" value={form.title} onChange={set("title")} placeholder="e.g. Design Thinking Bootcamp" className={errors.title ? inputErrorCls : inputCls} />
             </Field>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Category">
@@ -194,8 +232,8 @@ const OrganizerSubmit = () => {
                 <SelectBox data-testid="sub-mode" value={form.mode} onChange={set("mode")} options={MODES} />
               </Field>
             </div>
-            <Field label="Short Description * (shown on the event card)">
-              <input data-testid="sub-short" maxLength={150} value={form.short_description} onChange={set("short_description")} placeholder="One or two lines that make people want to click" className={inputCls} />
+            <Field label="Short Description * (shown on the event card)" error={errors.short_description}>
+              <input data-testid="sub-short" maxLength={150} value={form.short_description} onChange={set("short_description")} placeholder="One or two lines that make people want to click" className={errors.short_description ? inputErrorCls : inputCls} />
             </Field>
             <Field label="Full Description">
               <textarea data-testid="sub-full" rows={4} value={form.full_description} onChange={set("full_description")} placeholder="Agenda, speakers, takeaways…" className={`${inputCls} resize-y`} />
@@ -212,8 +250,8 @@ const OrganizerSubmit = () => {
               </Field>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Field label="Event Date *">
-                <input data-testid="sub-date" type="date" value={form.event_date} onChange={set("event_date")} className={inputCls} />
+              <Field label="Event Date *" error={errors.event_date}>
+                <input data-testid="sub-date" type="date" value={form.event_date} onChange={set("event_date")} className={errors.event_date ? inputErrorCls : inputCls} />
               </Field>
               <Field label="Start">
                 <input data-testid="sub-start" type="time" value={form.start_time} onChange={set("start_time")} className={inputCls} />
@@ -327,6 +365,11 @@ const OrganizerSubmit = () => {
                   Reason: <span className="text-white/90">{trackResult.reject_reason}</span>
                 </p>
               )}
+              {trackResult.admin_note && (
+                <p className="mt-3 text-xs text-[#BF72FF]">
+                  Note from Clann team: <span className="text-white/90">{trackResult.admin_note}</span>
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -339,11 +382,13 @@ const OrganizerSubmit = () => {
 };
 
 const inputCls = "w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors";
+const inputErrorCls = "w-full bg-[#0D0D0D] border border-red-500 focus:border-red-400 rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors";
 
-const Field = ({ label, children }) => (
+const Field = ({ label, error, children }) => (
   <div>
     <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block mb-2">{label}</label>
     {children}
+    {error && <p className="text-red-400 text-[11px] mt-1">{error}</p>}
   </div>
 );
 

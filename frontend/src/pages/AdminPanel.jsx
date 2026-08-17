@@ -253,6 +253,9 @@ const AdminPanel = () => {
   const [submissions, setSubmissions] = useState([]);
   const [subFilter, setSubFilter] = useState("pending");
   const [subAction, setSubAction] = useState(null); // submission_id currently being approved/rejected
+  const [expandedSubmission, setExpandedSubmission] = useState(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
   const [tab, setTab] = useState("events");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -499,6 +502,16 @@ const AdminPanel = () => {
     catch { toast.error("Delete failed"); }
   };
 
+  const saveNote = async (id) => {
+    setNoteSaving(true);
+    try {
+      await api.post(`/admin/submissions/${id}/note`, { reason: noteDraft });
+      toast.success("Note saved");
+      loadData();
+    } catch { toast.error("Could not save note"); }
+    setNoteSaving(false);
+  };
+
   const toggleAudience = (a) => setForm((f) => ({ ...f, recommended_for: f.recommended_for.includes(a) ? f.recommended_for.filter((x) => x !== a) : [...f.recommended_for, a] }));
 
   const handleGenerateTags = async () => {
@@ -679,6 +692,7 @@ const AdminPanel = () => {
   };
 
   return (
+    <>
     <div className="min-h-screen bg-[#0D0D0D]">
       <header className="sticky top-0 z-30 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-[#280049]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -953,7 +967,7 @@ const AdminPanel = () => {
                         {submissions
                           .filter((s) => s.status === subFilter)
                           .map((s) => (
-                            <tr key={s.submission_id} data-testid={`submission-row-${s.submission_id}`} className="hover:bg-[#280049]/40 transition-colors align-top">
+                            <tr key={s.submission_id} data-testid={`submission-row-${s.submission_id}`} onClick={() => { setExpandedSubmission(s); setNoteDraft(s.admin_note || ""); }} className="hover:bg-[#280049]/40 transition-colors align-top cursor-pointer">
                               <td className="px-4 py-3 text-white font-medium whitespace-nowrap">
                                 {s.organizer_name}
                                 <div className="text-[10px] text-[#727272] font-normal break-all">{s.organizer_email}</div>
@@ -996,7 +1010,7 @@ const AdminPanel = () => {
                                 {s.status === "pending" && (
                                   <>
                                     <button
-                                      onClick={() => approveSubmission(s.submission_id)}
+                                      onClick={(e) => { e.stopPropagation(); approveSubmission(s.submission_id); }}
                                       disabled={!!subAction}
                                       data-testid={`approve-${s.submission_id}`}
                                       className="inline-flex items-center gap-1 bg-[#F84E00] hover:bg-[#D14200] disabled:opacity-60 text-white rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors mr-1.5"
@@ -1005,7 +1019,7 @@ const AdminPanel = () => {
                                       Approve
                                     </button>
                                     <button
-                                      onClick={() => rejectSubmission(s.submission_id)}
+                                      onClick={(e) => { e.stopPropagation(); rejectSubmission(s.submission_id); }}
                                       disabled={!!subAction}
                                       data-testid={`reject-${s.submission_id}`}
                                       className="inline-flex items-center gap-1 border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-60 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors mr-1.5"
@@ -1015,7 +1029,7 @@ const AdminPanel = () => {
                                   </>
                                 )}
                                 <button
-                                  onClick={() => deleteSubmission(s.submission_id)}
+                                  onClick={(e) => { e.stopPropagation(); deleteSubmission(s.submission_id); }}
                                   data-testid={`delete-submission-${s.submission_id}`}
                                   title="Delete submission"
                                   className="text-[#727272] hover:text-red-400 p-1.5 transition-colors"
@@ -1333,6 +1347,60 @@ const AdminPanel = () => {
         </DialogContent>
       </Dialog>
     </div>
+
+      {expandedSubmission && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setExpandedSubmission(null)}>
+          <div
+            className="bg-[#18002C] border border-[#46176D]/40 rounded-2xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="submission-detail-modal"
+          >
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h2 className="text-xl font-black text-white">{expandedSubmission.title}</h2>
+              <button onClick={() => setExpandedSubmission(null)} className="text-[#727272] hover:text-white transition-colors" aria-label="Close">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <DetailRow label="Organizer" value={`${expandedSubmission.organizer_name} · ${expandedSubmission.organizer_email}${expandedSubmission.organizer_phone ? " · " + expandedSubmission.organizer_phone : ""}`} />
+              <DetailRow label="Category / Mode" value={`${expandedSubmission.category} · ${expandedSubmission.mode}`} />
+              <DetailRow label="Short Description" value={expandedSubmission.short_description} />
+              <DetailRow label="Full Description" value={expandedSubmission.full_description || "—"} />
+              {expandedSubmission.image_url && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold mb-1">Image</div>
+                  <img src={expandedSubmission.image_url} alt="" className="w-full max-h-48 object-cover rounded-lg border border-[#46176D]/40" />
+                </div>
+              )}
+              <DetailRow label="Location" value={`${expandedSubmission.location || "—"}, ${expandedSubmission.city || "—"}`} />
+              <DetailRow label="Date / Time" value={`${expandedSubmission.event_date} · ${expandedSubmission.start_time}–${expandedSubmission.end_time}`} />
+              <DetailRow label="Registration Deadline" value={expandedSubmission.registration_deadline || "—"} />
+              <DetailRow label="Paid" value={expandedSubmission.is_paid ? (expandedSubmission.price || "Yes") : "Free"} />
+              <DetailRow label="Total Seats" value={String(expandedSubmission.total_seats ?? "—")} />
+              <DetailRow label="Registration Link" value={expandedSubmission.external_link || "—"} />
+              <DetailRow label="Notes from organizer" value={expandedSubmission.notes || "—"} />
+            </div>
+            <div className="mt-5 pt-4 border-t border-[#46176D]/30">
+              <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block mb-2">Feedback / suggestion for organizer</label>
+              <textarea
+                value={noteDraft}
+                onChange={(e) => setNoteDraft(e.target.value)}
+                rows={3}
+                placeholder="e.g. Please add a clearer event image before we can approve this."
+                className="w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors resize-y"
+              />
+              <button
+                onClick={() => saveNote(expandedSubmission.submission_id)}
+                disabled={noteSaving}
+                className="mt-2 bg-[#280049] hover:bg-[#46176D] disabled:opacity-60 text-white rounded-full px-4 py-2 text-xs font-bold transition-colors"
+              >
+                {noteSaving ? "Saving…" : "Save Note"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -1354,6 +1422,13 @@ const StatCard = ({ testid, label, value, Icon }) => (
       <div className="text-3xl font-black text-white tracking-tight">{value}</div>
       <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold">{label}</div>
     </div>
+  </div>
+);
+
+const DetailRow = ({ label, value }) => (
+  <div>
+    <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold mb-1">{label}</div>
+    <div className="text-white/90 whitespace-pre-wrap">{value}</div>
   </div>
 );
 

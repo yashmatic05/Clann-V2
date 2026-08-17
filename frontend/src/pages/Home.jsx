@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
@@ -123,7 +124,7 @@ const Home = () => {
   }, [filteredEvents]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6 overflow-x-hidden max-w-full">
+    <div className="min-h-screen bg-[#0D0D0D] overflow-x-hidden max-w-full">
       <Navbar />
       <HeroBanner events={featuredBanners} imageMap={imageMap} usedImages={usedImages} />
       <WhatsAppReminderBar testid="whatsapp-bar-home" />
@@ -149,39 +150,55 @@ const Home = () => {
       {/* Row 2 — Category chips */}
       <CategoryFilter active={category} onChange={setCategory} />
 
-      <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 md:mt-8 ${isAll && !loading && events.length > 0 ? "hidden md:block" : ""}`}>
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[...Array(6)].map((_, i) => (
-              <div key={`skeleton-${i}`} className="bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 animate-pulse">
-                <div className="aspect-video bg-[#280049]" />
-                <div className="p-5 space-y-3">
-                  <div className="h-4 bg-[#280049] rounded" />
-                  <div className="h-3 bg-[#280049] rounded w-3/4" />
-                </div>
+      {/* Results block (desktop section + mobile feed) — animates as a unit on mode/category change. */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={`mode-${mode}-${category}`}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.35, ease: "easeInOut" }}
+        >
+          <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 md:mt-8 ${isAll && !loading && events.length > 0 ? "hidden md:block" : ""}`}>
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <div key={`skeleton-${i}`} className="bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 animate-pulse">
+                    <div className="aspect-video bg-[#280049]" />
+                    <div className="p-5 space-y-3">
+                      <div className="h-4 bg-[#280049] rounded" />
+                      <div className="h-3 bg-[#280049] rounded w-3/4" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : filteredEvents.length === 0 ? (
-          <div data-testid="empty-state" className="py-20 text-center text-[#727272]">
-            <p className="text-lg font-bold text-white mb-1">No events found</p>
-            <p className="text-sm">Try changing filters</p>
-          </div>
-        ) : (
-          <div data-testid="event-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEvents.map((ev, i) => (
-              <EventCard
-                key={ev.event_id}
-                event={ev}
-                index={i}
-                initialSaved={savedIds.has(ev.event_id)}
-                usedImages={usedImages}
-                imageSrc={imageMap.get(ev.event_id)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+            ) : filteredEvents.length === 0 ? (
+              <div data-testid="empty-state" className="py-20 text-center text-[#727272]">
+                <p className="text-lg font-bold text-white mb-1">No events found</p>
+                <p className="text-sm">Try changing filters</p>
+              </div>
+            ) : (
+              <div data-testid="event-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredEvents.map((ev, i) => (
+                  <EventCard
+                    key={ev.event_id}
+                    event={ev}
+                    index={i}
+                    initialSaved={savedIds.has(ev.event_id)}
+                    usedImages={usedImages}
+                    imageSrc={imageMap.get(ev.event_id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
+          {isAll && !loading && (
+            <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} usedImages={usedImages} imageMap={imageMap} />
+          )}
+        </motion.div>
+      </AnimatePresence>
 
       {govEvents.length > 0 && (
         <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20 ${isAll ? "hidden md:block" : ""}`} data-testid="government-section">
@@ -209,13 +226,8 @@ const Home = () => {
         </section>
       )}
 
-      {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
-      {isAll && !loading && (
-        <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} usedImages={usedImages} imageMap={imageMap} />
-      )}
-
       {/* Organizer CTA — public submission workflow */}
-      <section data-testid="organizer-cta" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20">
+      <section data-testid="organizer-cta" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20 pb-24 md:pb-6">
         <div className="rounded-2xl border border-[#46176D]/40 bg-[#18002C] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#F84E00] shrink-0">
