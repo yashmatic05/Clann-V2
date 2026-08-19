@@ -1302,6 +1302,11 @@ async def repair_excel_event_dates():
 async def root():
     return {"message": "Clann API is running"}
 
+
+@api_router.get("/health")
+async def health():
+    return {"status": "ok"}
+
 # Include router
 app.include_router(api_router)
 
