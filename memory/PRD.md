@@ -75,3 +75,8 @@ Colors: Orange #F84E00 (CTA), Purple #280049/#46176D/#BF72FF, Card #18002C, BG #
 - Real WhatsApp reminder sending (Twilio) — currently prefs are stored but no outbound messages
 - Analytics on registration clicks
 - Image upload via object storage (note: "URL only" is a locked user choice — revisit with the user before building)
+
+---
+
+## See also
+For current architecture, roadmap, and security status (kept separate from this historical changelog), see `ARCHITECTURE.md`, `ROADMAP.md`, `SECURITY.md`, and `AGENTS.md` in the repo root.
