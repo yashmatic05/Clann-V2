@@ -33,10 +33,10 @@ const AuthCallback = () => {
   }, [navigate, setUser]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center">
+    <div className="min-h-screen bg-canvas flex items-center justify-center">
       <div className="text-center">
-        <div className="w-12 h-12 border-4 border-[#280049] border-t-[#F84E00] rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-sm text-[#BF72FF] uppercase tracking-widest font-bold" data-testid="auth-callback-msg">{msg}</p>
+        <div className="h-12 w-12 rounded-full border-4 border-line border-t-cta animate-spin mx-auto"></div>
+        <p className="mt-4 t-body-strong text-ink-2" data-testid="auth-callback-msg">{msg}</p>
       </div>
     </div>
   );

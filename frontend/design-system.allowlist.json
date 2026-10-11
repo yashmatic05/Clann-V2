@@ -1,0 +1,77 @@
+{
+  "$comment": [
+    "Machine-readable design-system allowlist — DESIGN_SYSTEM.md section 'Guardrail'.",
+    "",
+    "Consumed by scripts/check-design-system.js (`npm run lint:design`). Every entry",
+    "is a KNOWN, DELIBERATE exception to an R9/R4/R6 rule. Nothing may be added here",
+    "to make the guardrail pass quietly: an entry needs a `reason` that a reviewer can",
+    "argue with, and the guardrail fails if an entry stops matching anything (stale),",
+    "or if an allowlisted file contains a value that is NOT listed.",
+    "",
+    "Shape:",
+    "  file    path relative to frontend/ (the directory holding package.json)",
+    "  rule    one of: hex | rgb-literal | r9 | spacing | grid-step | text-px | palette | panel-alpha | css",
+    "  values  exact strings permitted in that file under that rule (order-insensitive).",
+    "          For `r9` / `palette` / `css` these are the banned pattern literals.",
+    "  reason  why the exception is sanctioned, citing the design rule",
+    "  review  who sanctioned it and when"
+  ],
+
+  "entries": [
+    {
+      "file": "src/lib/theme.js",
+      "rule": "hex",
+      "values": ["#FFFBE9", "#0D0D0D"],
+      "reason": "THEME_COLOR_META feeds <meta name=\"theme-color\">, which the browser chrome reads directly and which cannot resolve a CSS custom property, so the literal has to exist somewhere. Both values mirror --c-canvas in src/index.css (light / dark). Sanctioned by DESIGN_SYSTEM.md R4 ('the only sanctioned hex values in src/').",
+      "review": "design-system rollout Part 1; re-confirmed Part 5"
+    },
+    {
+      "file": "src/components/WhatsAppIcon.jsx",
+      "rule": "hex",
+      "values": ["#25D366", "#FFFFFF"],
+      "reason": "Official WhatsApp brand mark. DESIGN_SYSTEM.md R4 allowlist: 'official third-party brand marks (the WhatsApp icon colors, the Google \"G\" logo) keep their official colors'. A brand mark must not be re-toned to follow the app theme or it stops being recognisable.",
+      "review": "design-system rollout Part 2; re-confirmed Part 5"
+    },
+    {
+      "file": "src/pages/Auth.jsx",
+      "rule": "hex",
+      "values": ["#4285F4", "#EA4335", "#FBBC05", "#34A853"],
+      "reason": "The four official Google 'G' logo colours, inside the inline SVG on both sign-in tabs. DESIGN_SYSTEM.md R4 allowlist (brand marks). Only the LOGO keeps its colours: the button around it is tokenised (bg-surface / border-line-input / text-ink), so the Google button does follow the theme and R2's 60-30-10 balance is preserved.",
+      "review": "design-system rollout Part 4; re-confirmed Part 5"
+    },
+    {
+      "file": "src/components/HeroBanner.jsx",
+      "rule": "panel-alpha",
+      "values": ["bg-canvas/50", "bg-canvas/80"],
+      "reason": "OPEN ITEM, not a sanctioned exception. These two sit on the hero carousel's inactive dot indicator (an 8px circle, `h-2 w-2`) and its hover state, not on a panel, so they are outside the spirit of R9's 'translucent panel backgrounds such as bg-xxx/85' — but they are the only canvas-alpha fills in src and the guardrail reports them rather than hiding them. Left in place because HeroBanner.jsx is not in Part 5's permitted file list. To clear this entry, make the inactive dot opaque (e.g. bg-scrim/60 or a solid token) and delete these two values.",
+      "review": "found by the Part 5 guardrail; NOT yet approved by the product owner"
+    }
+  ],
+
+  "$reviewedAndAccepted": {
+    "$comment": [
+      "Not allowlist entries — recorded so a future reader knows these were looked at",
+      "and deliberately accepted, rather than missed.",
+      "",
+      "Token-alpha fills that are NOT panels. R9 bans translucent PANEL backgrounds;",
+      "these are small tint fills on tracks, rows and badges, and every one of them is",
+      "on a semantic token so it still follows the theme:"
+    ],
+    "bg-scrim/60": "The sanctioned overlay/scrim treatment (DESIGN_SYSTEM.md R5 and R8 'Modal/dialog': scrim bg-scrim/60 with no blur). 10 sites.",
+    "bg-cta/15 + border-cta/50": "Paid-price badge fill in src/lib/event-utils.js priceBadgeClass(); R8 'Chips, badges, tabs'.",
+    "bg-primary/20": "Stock shadcn track fill in ui/progress.jsx and ui/slider.jsx (primary is the config alias for the cta token).",
+    "bg-muted/50": "Stock shadcn tint in ui/table.jsx (TableFooter fill and TableRow hover); muted is the config alias for the raised token.",
+    "bg-accent/50": "Stock shadcn open-state tint in ui/navigation-menu.jsx; accent is the config alias for the raised token."
+  },
+
+  "$ruleBoundaries": {
+    "$comment": "Where each rule stops, so the guardrail is auditable rather than mysterious.",
+    "panel-alpha": "Flags alpha on panel-scale surface tokens only: canvas, surface, raised, brand, card, popover, background. Deliberately does NOT flag muted / accent / secondary, which this codebase (and stock shadcn) uses as tint and hover fills on small elements — see $reviewedAndAccepted.",
+    "palette": "Requires a shade number (e.g. red-500, slate-200). A palette word without a shade is prose or a token name, not a Tailwind palette class.",
+    "spacing": "p / m / gap / space-x / space-y only, per R6's allowed scale (0 1 2 3 4 6 8 12 16 plus px). Widths and heights are checked by the separate grid-step rule instead, because R6 permits any multiple of 4 there.",
+    "grid-step": "Flags the .5 steps (h-0.5, w-1.5, size-2.5 ...) and arbitrary h-[Npx] / w-[Npx] where N is not a multiple of 4.",
+    "hex": "Any 3-8 digit hex literal in a .js/.jsx file. src/*.css is exempt from this rule because src/index.css is where the --c-* tokens are DEFINED; the css rule group covers stylesheets instead.",
+    "comments": "Comments and JSX text are stripped before matching, so documentation may quote a banned pattern. The count of comment-only matches is reported separately for information.",
+    "test-files": "*.test.js / *.test.jsx / *.spec.* are not scanned, for the same reason comments are stripped: src/design-system.guardrail.test.js has to quote banned patterns in order to assert the guardrail catches them. Test files are never shipped in the bundle."
+  }
+}

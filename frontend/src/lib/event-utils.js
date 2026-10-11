@@ -48,11 +48,14 @@ export const priceLabel = (event) => {
 };
 
 /**
- * Standardized pricing badge colors.
- * Free → green tag. Paid → orange tag.
+ * Standardized pricing badge colors (R2 design tokens, no raw hex or palette
+ * names). Free → green "ok" tag. Paid → orange "cta" tag.
+ *
+ * These stay semantic tokens so the badge follows the active theme; the same
+ * two classes are returned in light and dark mode.
  */
 export const priceBadgeClass = (event) => {
   return event && event.is_paid
-    ? "bg-[#F84E00]/15 text-[#F84E00] border border-[#F84E00]/50"
-    : "bg-emerald-500/15 text-emerald-300 border border-emerald-400/40";
+    ? "bg-cta/15 text-cta-text border border-cta/50"
+    : "bg-ok-bg text-ok border border-ok";
 };

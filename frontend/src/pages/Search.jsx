@@ -7,6 +7,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
 import { useAuth } from "@/context/AuthContext";
 import { assignEventImages } from "@/lib/image-fallback";
+import { Input } from "@/components/ui/input";
 
 const Search = () => {
   const { user } = useAuth();
@@ -74,33 +75,33 @@ const Search = () => {
   }, [q, setSearchParams]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
+    <div className="min-h-screen bg-canvas pb-16 md:pb-8">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
-          <SearchIcon className="text-[#F84E00]"/> Search Events
+        <h1 className="t-h1 text-ink flex items-center gap-2">
+          <SearchIcon size={24} strokeWidth={1.75} className="text-ink-muted"/> Search Events
         </h1>
-        <p className="text-sm text-[#727272] mt-1">Find events by name, category, city, or CLANN Event ID.</p>
+        <p className="t-body text-ink-muted mt-1">Find events by name, category, city, or CLANN Event ID.</p>
 
         <div className="mt-6 relative">
-          <SearchIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#727272]" />
-          <input
+          <SearchIcon size={16} strokeWidth={1.75} className="absolute left-4 top-1/2 -translate-y-1/2 text-ink-muted" />
+          <Input
             data-testid="search-input"
             autoFocus
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search events, workshops, meetups..."
-            className="w-full bg-[#18002C] border border-[#46176D]/40 focus:border-[#F84E00] rounded-full pl-11 pr-4 py-3 text-sm text-white placeholder-[#727272] outline-none transition-colors"
+            className="h-11 rounded-full pl-12 pr-4"
           />
         </div>
 
-        <p className="mt-4 text-xs text-[#727272]" data-testid="search-count">
+        <p className="mt-4 t-caption text-ink-muted" data-testid="search-count">
           {loading ? "Searching..." : error ? error : `${results.length} result${results.length !== 1 ? "s" : ""}`}
         </p>
 
         {error && !loading && (
-          <div className="mt-4 text-center text-[#F84E00] text-sm">
+          <div className="mt-4 text-center text-danger t-body">
             <p>{error}</p>
           </div>
         )}
@@ -119,9 +120,9 @@ const Search = () => {
         </div>
 
         {!loading && !error && results.length === 0 && q.trim() && (
-          <div className="py-16 text-center text-[#727272]" data-testid="search-empty">
-            <p className="text-white font-bold text-lg mb-1">No matches</p>
-            <p className="text-sm">Try a different keyword.</p>
+          <div className="py-16 text-center text-ink-muted" data-testid="search-empty">
+            <p className="t-h3 text-ink mb-1">No matches</p>
+            <p className="t-body">Try a different keyword.</p>
           </div>
         )}
       </div>

@@ -64,9 +64,9 @@ const HeroBanner = ({ events, imageMap, usedImages }) => {
 
   return (
     <section data-testid="hero-banner" className="relative w-full select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 md:pt-8">
         <div
-          className="relative rounded-2xl overflow-hidden aspect-[16/9] sm:aspect-[21/9] bg-[#18002C] cursor-pointer touch-pan-y"
+          className="relative rounded-lg overflow-hidden aspect-[16/9] sm:aspect-[21/9] bg-raised cursor-pointer touch-pan-y"
           onMouseDown={onPointerDown}
           onMouseMove={onPointerMove}
           onMouseUp={finalizeDrag}
@@ -100,12 +100,11 @@ const HeroBanner = ({ events, imageMap, usedImages }) => {
                   draggable={false}
                   className="w-full h-full object-cover pointer-events-none"
                 />
-                <div className="absolute inset-0 bg-gradient-to-r from-[#0D0D0D]/25 via-transparent to-[#0D0D0D]/25" />
               </button>
             ))}
           </div>
 
-          {/* Dot indicators */}
+          {/* Dot indicators — R2: the active dot uses selected, never orange. */}
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10">
             {events.map((ev, i) => (
               <button
@@ -113,7 +112,7 @@ const HeroBanner = ({ events, imageMap, usedImages }) => {
                 data-testid={`hero-dot-${i}`}
                 onClick={(e) => { e.stopPropagation(); pauseUntil.current = Date.now() + 6000; setIdx(i); }}
                 aria-label={`Slide ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all ${i === idx ? "w-8 bg-[#F84E00]" : "w-2 bg-white/40 hover:bg-white/70"}`}
+                className={`h-2 rounded-full transition-[width,background-color] duration-standard ease-standard ${i === idx ? "w-8 bg-selected" : "w-2 bg-canvas/50 hover:bg-canvas/80"}`}
               />
             ))}
           </div>

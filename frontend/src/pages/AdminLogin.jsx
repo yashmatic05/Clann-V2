@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import { ChevronLeft, Lock } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import FormField from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -25,28 +30,32 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
+      {/* No Navbar on this page, so the theme switch is pinned to the viewport
+          (16px from the top and right edges). Renders nothing while
+          ENABLE_LIGHT_MODE is false — see src/lib/theme.js. */}
+      <div className="fixed top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
-        <button data-testid="admin-back" onClick={() => navigate("/")} className="text-[#BF72FF] hover:text-white text-sm inline-flex items-center gap-1 mb-6 transition-colors">
-          <ChevronLeft size={16}/> Back
+        <button data-testid="admin-back" onClick={() => navigate("/")} className="t-body text-cta-text hover:underline inline-flex items-center gap-1 mb-6 transition-colors duration-fast ease-standard">
+          <ChevronLeft size={16} strokeWidth={1.75}/> Back
         </button>
-        <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-8">
-          <div className="w-12 h-12 rounded-xl bg-[#F84E00] flex items-center justify-center mb-4">
-            <Lock size={20} className="text-white"/>
+        <div className="bg-surface border border-line rounded-lg p-8">
+          <div className="h-12 w-12 rounded-md bg-raised flex items-center justify-center mb-4">
+            <Lock size={24} strokeWidth={1.75} className="text-ink-muted"/>
           </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">Admin Access</h1>
-          <p className="mt-1 text-sm text-[#727272]">Restricted area. Authorised personnel only.</p>
+          <h1 className="t-h1 text-ink">Admin Access</h1>
+          <p className="mt-1 t-body text-ink-muted">Restricted area. Authorised personnel only.</p>
 
           <form onSubmit={submit} className="mt-6 space-y-4">
-            <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Email</label>
-              <input data-testid="admin-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-2 w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white outline-none" />
-            </div>
-            <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Password</label>
-              <input data-testid="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="mt-2 w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white outline-none" />
-            </div>
-            <button data-testid="admin-submit" type="submit" disabled={loading} className="w-full bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:opacity-60 text-white rounded-full px-5 py-3 font-bold text-sm transition-colors">
+            <FormField label="Email" required>
+              <Input data-testid="admin-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            </FormField>
+            <FormField label="Password" required>
+              <Input data-testid="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            </FormField>
+            <button data-testid="admin-submit" type="submit" disabled={loading} className={cn(buttonVariants({ variant: "primary", size: "md" }), "w-full")}>
               {loading ? "Signing in..." : "Login"}
             </button>
           </form>

@@ -68,31 +68,31 @@ const CalendarPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
+    <div className="min-h-screen bg-canvas pb-16 md:pb-8">
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
-          <CalendarDays className="text-[#F84E00]"/> My Calendar
+        <h1 className="t-h1 text-ink flex items-center gap-2">
+          <CalendarDays size={24} strokeWidth={1.75} className="text-ink-muted"/> My Calendar
         </h1>
-        <p className="text-sm text-[#727272] mt-1">Events you've registered for, all in one view.</p>
+        <p className="t-body text-ink-muted mt-1">Events you've registered for, all in one view.</p>
 
-        <div className="mt-6 bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-4 sm:p-6">
+        <div className="mt-6 bg-surface border border-line rounded-lg p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <button data-testid="cal-prev" onClick={prev} className="p-2 rounded-full bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] transition-colors">
-              <ChevronLeft size={16}/>
+            <button data-testid="cal-prev" onClick={prev} className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink transition-colors duration-fast ease-standard hover:bg-raised">
+              <ChevronLeft size={16} strokeWidth={1.75}/>
             </button>
-            <h2 data-testid="cal-month" className="text-lg sm:text-xl font-black text-white tracking-tight">
+            <h2 data-testid="cal-month" className="t-h2 text-ink">
               {monthName(month)} {year}
             </h2>
-            <button data-testid="cal-next" onClick={next} className="p-2 rounded-full bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] transition-colors">
-              <ChevronRight size={16}/>
+            <button data-testid="cal-next" onClick={next} className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink transition-colors duration-fast ease-standard hover:bg-raised">
+              <ChevronRight size={16} strokeWidth={1.75}/>
             </button>
           </div>
 
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
             {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d) => (
-              <div key={d} className="text-center text-[10px] font-bold uppercase tracking-widest text-[#BF72FF] py-2">{d}</div>
+              <div key={d} className="text-center t-caption font-bold text-ink-muted py-2">{d}</div>
             ))}
           </div>
 
@@ -110,20 +110,20 @@ const CalendarPage = () => {
                   key={key}
                   data-testid={`cal-day-${d}`}
                   onClick={() => count > 0 && setSelectedDate(active ? null : key)}
-                  className={`aspect-square rounded-lg text-sm font-bold flex flex-col items-center justify-center relative transition-colors border ${
-                    active ? "bg-[#F84E00] text-white border-[#F84E00]"
-                    : overlap ? "bg-amber-500/10 text-amber-200 border-amber-400/40 hover:bg-amber-500/20"
-                    : count > 0 ? "bg-[#280049] text-white border-[#46176D]/60 hover:bg-[#46176D]"
-                    : "bg-transparent text-[#727272] border-transparent hover:bg-[#280049]/40"
-                  } ${isToday && !active ? "ring-1 ring-[#F84E00]" : ""}`}
+                  className={`aspect-square rounded-lg t-body font-bold flex flex-col items-center justify-center relative transition-colors duration-fast ease-standard border ${
+                    active ? "bg-selected text-on-selected border-selected"
+                    : overlap ? "bg-raised text-ink border-line-input hover:border-ink-2"
+                    : count > 0 ? "bg-surface text-ink border-line hover:border-line-input"
+                    : "bg-transparent text-ink-muted border-transparent hover:bg-raised"
+                  } ${isToday && !active ? "ring-1 ring-cta" : ""}`}
                   title={overlap ? `${count} events on this day` : count === 1 ? `1 event` : ""}
                 >
                   <span>{d}</span>
                   {count > 0 && !active && (
-                    <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${overlap ? "bg-amber-400" : "bg-[#F84E00]"}`}></span>
+                    <span className="absolute bottom-1 h-2 w-2 rounded-full bg-cta"></span>
                   )}
                   {overlap && !active && (
-                    <span className="absolute top-0.5 right-1 text-[9px] font-black text-amber-300">{count}</span>
+                    <span className="absolute top-0 right-1 t-caption font-bold text-cta-text">{count}</span>
                   )}
                 </button>
               );
@@ -131,13 +131,13 @@ const CalendarPage = () => {
           </div>
 
           {selectedDate && (
-            <div className="mt-5 bg-[#0D0D0D] border border-[#46176D]/40 rounded-xl p-4" data-testid="cal-day-panel">
+            <div className="mt-4 bg-canvas border border-line rounded-lg p-4" data-testid="cal-day-panel">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-white">
+                <p className="t-body-strong text-ink">
                   {selectedEvents.length} event{selectedEvents.length > 1 ? "s" : ""} on {selectedDate}
                 </p>
                 {selectedEvents.length >= 2 && (
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-300 bg-amber-500/10 border border-amber-400/40 rounded-full px-2 py-0.5">
+                  <span className="inline-flex h-6 items-center rounded-full border border-cta/50 bg-cta/15 px-2 t-caption font-bold text-cta-text">
                     Overlap
                   </span>
                 )}
@@ -148,14 +148,14 @@ const CalendarPage = () => {
                     to={`/event/${ev.event_id}`}
                     key={ev.event_id}
                     data-testid={`cal-event-${ev.event_id}`}
-                    className="flex items-center gap-3 bg-[#18002C] border border-[#46176D]/30 hover:border-[#46176D] rounded-lg p-3 transition-colors group"
+                    className="flex items-center gap-3 bg-surface border border-line hover:border-line-input rounded-lg p-3 transition-colors duration-fast ease-standard group"
                   >
-                    <img {...eventImageHandlers(ev, usedImages, imageMap.get(ev.event_id))} alt="" className="w-12 h-12 rounded-lg object-cover"/>
+                    <img {...eventImageHandlers(ev, usedImages, imageMap.get(ev.event_id))} alt="" className="h-12 w-12 rounded-md object-cover"/>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate group-hover:text-[#F84E00] transition-colors">{ev.title}</p>
-                      <p className="text-[11px] text-[#727272]">{ev.start_time} – {ev.end_time} · {ev.location}</p>
+                      <p className="t-body-strong text-ink truncate">{ev.title}</p>
+                      <p className="t-caption text-ink-muted">{ev.start_time} – {ev.end_time} · {ev.location}</p>
                     </div>
-                    <ExternalLink size={14} className="text-[#BF72FF]"/>
+                    <ExternalLink size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted"/>
                   </Link>
                 ))}
               </div>
@@ -163,8 +163,8 @@ const CalendarPage = () => {
           )}
 
           {events.length === 0 && (
-            <p className="mt-6 text-center text-sm text-[#727272]" data-testid="cal-empty">
-              No registered events yet. Click <span className="text-[#F84E00] font-bold">Register Now</span> on any event to add it here.
+            <p className="mt-6 text-center t-body text-ink-muted" data-testid="cal-empty">
+              No registered events yet. Click <span className="text-cta-text font-bold">Register Now</span> on any event to add it here.
             </p>
           )}
         </div>

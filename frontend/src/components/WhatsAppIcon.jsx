@@ -1,5 +1,17 @@
 import React from "react";
 
+/**
+ * ALLOWLISTED BRAND MARK — do not tokenize.
+ *
+ * The WhatsApp glyph is a third-party trademark. Its brand green and the white
+ * knockout are fixed by Meta's brand guidelines and must render identically in
+ * BOTH themes, so they are the only intentional raw color literals left in
+ * src/components (alongside THEME_COLOR_META in src/lib/theme.js, which feeds
+ * the browser's own theme-color meta tag and cannot use CSS variables).
+ *
+ * Everything else in the design system goes through a token from
+ * frontend/tailwind.config.js.
+ */
 const WhatsAppIcon = ({ size = 22 }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <circle cx="16" cy="16" r="16" fill="#25D366"/>

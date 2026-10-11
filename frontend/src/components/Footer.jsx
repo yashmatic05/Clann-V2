@@ -54,11 +54,11 @@ const Footer = () => {
   }, [phase, text1, text2]);
 
   return (
-    <footer data-testid="site-footer" className="relative mt-16 md:mt-24 bg-[#0D0D0D] overflow-hidden">
+    <footer data-testid="site-footer" className="relative mt-16 bg-canvas overflow-hidden">
       {/* Text block — fixed height so monument row never shifts as text types */}
-      <div className="relative z-10 max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 pt-12 md:pt-16 pb-4">
-        <div className="h-[210px] sm:h-[230px] md:h-[250px] flex flex-col justify-start">
-          <h2 className="font-semibold tracking-tight text-white/95 text-3xl sm:text-4xl md:text-5xl leading-[1.1]">
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 md:pt-16 pb-4">
+        <div className="h-52 flex flex-col justify-start">
+          <h2 className="t-h1 text-ink">
             <span data-testid="footer-line-1" className="block min-h-[1.2em]">
               {text1}
               {phase === "typing1" && <span className="footer-caret">|</span>}
@@ -75,7 +75,7 @@ const Footer = () => {
             src="/brand/clann-logo-color.png"
             alt="Clann"
             data-testid="footer-logo"
-            className="mt-5 self-start block h-auto w-auto max-h-12 sm:max-h-14 object-contain drop-shadow-[0_0_25px_rgba(248,78,0,0.35)]"
+            className="mt-4 self-start block h-auto w-auto max-h-12 sm:max-h-14 object-contain"
           />
         </div>
       </div>
@@ -90,22 +90,21 @@ const Footer = () => {
           className="block w-full h-auto select-none pointer-events-none"
           draggable={false}
         />
-        <div className="absolute -top-8 sm:-top-12 inset-x-0 h-12 sm:h-16 bg-gradient-to-b from-[#0D0D0D] to-transparent pointer-events-none"/>
       </div>
 
-      <div className="relative z-10 border-t border-[#280049] bg-[#0D0D0D]">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-14 pt-7 pb-5 flex flex-row flex-wrap items-center justify-center sm:justify-between gap-x-4 gap-y-1.5 text-[10px] sm:text-xs text-[#727272]">
+      <div className="relative z-10 border-t border-line bg-canvas">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 flex flex-row flex-wrap items-center justify-center sm:justify-between gap-x-4 gap-y-2 t-caption text-ink-muted">
           <div className="flex flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <p>© {new Date().getFullYear()} Clann. Made with love in Delhi.</p>
             <Link
               to="/organizer"
               data-testid="footer-organizer-link"
-              className="tracking-widest uppercase font-semibold text-[#BF72FF] hover:text-white transition-colors"
+              className="t-label text-ink-2 hover:text-ink transition-colors duration-fast ease-standard"
             >
               List Your Event
             </Link>
           </div>
-          <p className="tracking-widest uppercase font-semibold text-[#BF72FF]">Explore More · Upskill More</p>
+          <p className="t-label text-ink-2">Explore More · Upskill More</p>
         </div>
       </div>
     </footer>

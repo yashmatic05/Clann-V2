@@ -107,6 +107,40 @@ let webpackConfig = {
   },
 };
 
+/* ---------------------------------------------------------------------------
+   Jest configuration (`craco test`) — added by Part 5 of the design-system
+   rollout, which introduced the first tests in this repo.
+
+   react-scripts generates the base Jest config; this only ADDS the two things
+   the app needs and changes nothing else. transform, testEnvironment, the CSS
+   and asset handling and the coverage defaults all stay exactly as
+   react-scripts defines them, so `craco test` keeps behaving like CRA's.
+
+     * moduleNameMapper — teaches Jest the `@/` webpack alias defined above.
+       Without it every `import ... from "@/lib/theme"` fails to resolve under
+       Jest even though the webpack build is fine. Merged, not replaced, so
+       react-scripts' own `^react-native$` mapping survives.
+     * setupFilesAfterEnv — src/setupTests.js (the matchMedia polyfill
+       next-themes and framer-motion need under jsdom). CRA already picks that
+       path up by convention; listing it explicitly means a future base-config
+       change cannot silently drop it.
+   ------------------------------------------------------------------------- */
+webpackConfig.jest = {
+  configure: (jestConfig) => {
+    jestConfig.moduleNameMapper = {
+      ...(jestConfig.moduleNameMapper || {}),
+      '^@/(.*)$': '<rootDir>/src/$1',
+    };
+
+    const setupFile = '<rootDir>/src/setupTests.js';
+    jestConfig.setupFilesAfterEnv = Array.from(
+      new Set([...(jestConfig.setupFilesAfterEnv || []), setupFile]),
+    );
+
+    return jestConfig;
+  },
+};
+
 webpackConfig.devServer = (devServerConfig) => {
   // Add health check endpoints if enabled
   if (config.enableHealthCheck && setupHealthEndpoints && healthPluginInstance) {

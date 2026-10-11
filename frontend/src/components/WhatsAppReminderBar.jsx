@@ -29,18 +29,20 @@ const WhatsAppReminderBar = ({ testid = "whatsapp-reminder-bar" }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6" data-testid={testid}>
-      <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl px-4 sm:px-6 py-4 flex items-center gap-4">
-        <WhatsAppIcon size={30} />
+      {/* R1/R5: flat surface + border, no translucent panel, no shadow in a card-like bar. */}
+      <div className="bg-surface border border-line rounded-lg px-4 sm:px-6 py-4 flex items-center gap-4">
+        <WhatsAppIcon size={32} />
         <div className="flex-1 min-w-0">
-          <p className="text-white font-bold text-base sm:text-lg leading-tight">Enable WhatsApp Reminders</p>
-          <p className="text-[11px] sm:text-xs text-[#727272] mt-1">Never miss an update.</p>
+          <p className="t-h3 text-ink">Enable WhatsApp Reminders</p>
+          <p className="t-caption text-ink-muted mt-1">Never miss an update.</p>
         </div>
+        {/* R2: orange is never used for a control's on-state — Switch already
+            paints bg-selected when checked, so no override is passed here. */}
         <Switch
           data-testid={`${testid}-switch`}
           checked={enabled}
           disabled={busy}
           onCheckedChange={onToggle}
-          className="data-[state=checked]:bg-[#F84E00]"
         />
       </div>
     </div>

@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
-import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight } from "lucide-react";
+import { MapPin, Calendar, Clock, Copy, Share2, Bookmark, ChevronRight, Rocket } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
@@ -12,17 +12,26 @@ import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-uti
 import { formatEventDateShort } from "@/lib/dates";
 import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
+/**
+ * Category chips are uniform (R2) — same decision as EventCard,
+ * CompactEventCard and EventsListPage: no hex, no palette names, one accent.
+ */
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
-  if (c.includes("workshop")) return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-  if (c.includes("hackathon")) return "bg-orange-500/15 text-orange-300 border-orange-400/40";
-  if (c.includes("meetup")) return "bg-teal-500/15 text-teal-300 border-teal-400/40";
-  if (c.includes("conference")) return "bg-blue-500/15 text-blue-300 border-blue-400/40";
-  if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
-  if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
-  return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+  if (c.includes("workshop")) return "bg-chip text-ink border-line";
+  if (c.includes("hackathon")) return "bg-chip text-ink border-line";
+  if (c.includes("meetup")) return "bg-chip text-ink border-line";
+  if (c.includes("conference")) return "bg-chip text-ink border-line";
+  if (c.includes("walk")) return "bg-chip text-ink border-line";
+  if (c.includes("art")) return "bg-chip text-ink border-line";
+  return "bg-chip text-ink border-line";
 };
+
+const chipClass =
+  "inline-flex h-6 shrink-0 items-center rounded-md border px-1 t-caption font-semibold whitespace-nowrap";
 
 const RelatedEventCard = ({ event, savedIds, usedImages, imageSrc }) => {
   const navigate = useNavigate();
@@ -31,38 +40,38 @@ const RelatedEventCard = ({ event, savedIds, usedImages, imageSrc }) => {
   return (
     <div
       onClick={() => navigate(`/event/${event.event_id}`)}
-      className="flex-shrink-0 w-[200px] h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer flex flex-col"
+      className="flex-shrink-0 w-[200px] h-[300px] bg-surface border border-line hover:border-line-input rounded-lg overflow-hidden cursor-pointer flex flex-col transition-colors duration-fast ease-standard"
     >
-      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
-      <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden flex-1">
+      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-raised" />
+      <div className="p-2 flex flex-col gap-1 overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
-          <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+          <span className={`${chipClass} ${categoryColor(event.category)}`}>
             {event.category}
           </span>
         </div>
 
         {/* Row 2 */}
-        <h4 className="text-[12px] font-bold text-white line-clamp-2 leading-tight">
+        <h4 className="t-caption font-bold text-ink line-clamp-2">
           {event.title}
         </h4>
 
         {/* Row 3 */}
-        <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
-          <MapPin size={10} className="shrink-0 text-[#BF72FF]" />
+        <p className="flex items-center gap-1 t-caption text-ink-2 truncate">
+          <MapPin size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted" />
           <span className="truncate">
             {event.city}{event.location ? ` | ${event.location.split(",")[0]}` : ""}
           </span>
         </p>
 
         {/* Row 4 */}
-        <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
-          <Calendar size={10} className="shrink-0 text-[#BF72FF]" />
+        <p className="flex items-center gap-1 t-caption text-ink-2 truncate">
+          <Calendar size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted" />
           <span>{formatEventDateShort(event.event_date)}</span>
         </p>
 
         {/* Row 5 */}
-        <p className={`text-[10px] font-semibold truncate ${status.tone === "urgent" ? "text-[#F84E00]" : "text-[#727272]"}`}>
+        <p className={cn("t-caption font-semibold truncate", status.tone === "urgent" ? "text-danger" : "text-ink-muted")}>
           {status.text}
         </p>
 
@@ -76,7 +85,7 @@ const RelatedEventCard = ({ event, savedIds, usedImages, imageSrc }) => {
               window.open(event.external_link, "_blank", "noopener,noreferrer");
             }
           }}
-          className="mt-auto w-full h-[28px] bg-[#F84E00] text-white text-[11px] rounded-[20px] font-bold"
+          className={cn(buttonVariants({ variant: "primary", size: "sm" }), "mt-auto w-full")}
         >
           Register
         </button>
@@ -198,44 +207,43 @@ const EventDetail = () => {
     window.open(event.external_link, "_blank", "noopener,noreferrer");
   };
 
-  if (!event) return <div className="min-h-screen bg-[#0D0D0D]" />;
+  if (!event) return <div className="min-h-screen bg-canvas" />;
 
   const status = registrationStatus(event);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
+    <div className="min-h-screen bg-canvas pb-16 md:pb-8">
       <Navbar />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-6 pb-20 md:pb-0">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-6 pb-16 md:pb-0">
         {/* Banner container — relative anchor for the Clann Event ID chip.
             The chip is absolutely positioned above the banner image
             (never overlapping the image content or the share/save buttons):
             top-right on mobile, top-left on desktop. */}
-        <div className={`relative${event.clann_event_id ? " pt-[58px] md:pt-[78px]" : ""}`}>
+        <div className={`relative${event.clann_event_id ? " pt-16" : ""}`}>
           {event.clann_event_id && (
-            <div className="absolute top-0 right-0 flex flex-col items-end md:top-4 md:right-auto md:left-0 md:items-start">
-              <span className="text-[10px] text-[#727272] font-semibold tracking-widest mb-1">EVENT ID</span>
+            <div className="absolute top-0 right-0 flex flex-col items-end md:top-0 md:right-auto md:left-0 md:items-start">
+              <span className="t-caption text-ink-muted font-semibold mb-1">EVENT ID</span>
               <button
                 type="button"
                 onClick={copyEventId}
                 data-testid="event-id-chip"
                 title="Copy event ID"
-                className="inline-flex items-center gap-1.5 bg-[#18002C] text-[#BF72FF] border border-[#46176D] text-[11px] font-semibold px-2.5 py-1 rounded-[20px] hover:border-[#BF72FF]/50 transition-colors"
+                className="inline-flex h-8 items-center gap-2 rounded-full border border-line bg-surface px-2 t-caption font-semibold text-ink transition-colors duration-fast ease-standard hover:border-line-input"
               >
                 {event.clann_event_id}
-                <Copy size={12} />
+                <Copy size={16} strokeWidth={1.75} />
               </button>
             </div>
           )}
 
-          <div className="relative rounded-2xl overflow-hidden aspect-[16/9] bg-[#18002C]">
+          <div className="relative rounded-lg overflow-hidden aspect-[16/9] bg-raised">
             <img {...eventImageHandlers(event, usedImages, imageMap.get(event.event_id))} alt={event.title} className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D]/90 via-transparent to-transparent" />
             <div className="absolute top-4 right-4 flex gap-2">
-              <button data-testid="detail-share" onClick={share} title="Share event" className="p-2.5 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors">
-                <Share2 size={16}/>
+              <button data-testid="detail-share" onClick={share} title="Share event" className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink transition-colors duration-fast ease-standard hover:bg-raised">
+                <Share2 size={16} strokeWidth={1.75}/>
               </button>
-              <button data-testid="detail-save" onClick={toggleSave} className={`p-2.5 rounded-full backdrop-blur transition-colors ${saved ? "bg-[#F84E00] text-white" : "bg-black/50 hover:bg-[#46176D] text-white"}`}>
-                <Bookmark size={16} fill={saved ? "currentColor" : "none"}/>
+              <button data-testid="detail-save" onClick={toggleSave} className={`flex h-11 w-11 items-center justify-center rounded-full border transition-colors duration-fast ease-standard ${saved ? "border-selected bg-selected text-on-selected" : "border-line bg-surface text-ink hover:bg-raised"}`}>
+                <Bookmark size={16} strokeWidth={1.75} fill={saved ? "currentColor" : "none"}/>
               </button>
             </div>
           </div>
@@ -243,133 +251,132 @@ const EventDetail = () => {
 
         <div className="mt-6 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <span className="bg-[#46176D]/60 text-[#BF72FF] border border-[#BF72FF]/40 rounded-lg px-3 py-1 text-xs font-bold tracking-widest uppercase">
+            <span className="inline-flex h-8 items-center rounded-md border border-line bg-chip px-3 t-body-strong text-ink">
               {event.category}
             </span>
-            <span className="bg-[#280049] text-[#BF72FF] rounded-lg px-3 py-1 text-xs font-bold uppercase tracking-wider">{event.mode}</span>
+            <span className="inline-flex h-8 items-center rounded-md border border-line bg-raised px-3 t-body-strong text-ink-2">{event.mode}</span>
           </div>
           <div>
-            <span data-testid="detail-price" className={`rounded-lg px-3 py-1 text-xs font-bold ${priceBadgeClass(event)}`}>
+            <span data-testid="detail-price" className={cn("inline-flex h-8 items-center rounded-md px-3 t-body-strong", priceBadgeClass(event))}>
               {priceLabel(event)}
             </span>
           </div>
         </div>
 
-        <h1 data-testid="event-title" className="mt-3 text-3xl sm:text-5xl font-black text-white tracking-tighter leading-[32px] sm:leading-[50px]">
+        <h1 data-testid="event-title" className="mt-3 t-h1 text-ink">
           {event.title}
         </h1>
 
         {/* Registration deadline status — shown before primary CTA */}
         <div
           data-testid="event-registration-status"
-          className={`mt-4 flex items-center gap-2 text-sm font-semibold ${
-            status.tone === "urgent" ? "text-[#F84E00]" :
-            status.tone === "muted" ? "text-[#727272]" :
-            "text-[#BF72FF]"
-          }`}
+          className={cn("mt-4 flex items-center gap-2 t-body-strong",
+            status.tone === "urgent" ? "text-danger" :
+            status.tone === "muted" ? "text-ink-muted" :
+            "text-ink-2"
+          )}
         >
           {status.tone === "urgent" && (
-            <span className="rocket-bounce inline-flex items-center gap-1">🚀</span>
+            <span className="rocket-bounce inline-flex items-center gap-1"><Rocket size={16} strokeWidth={1.75} /></span>
           )}
           {status.text}
         </div>
 
         {/* Combined Location / Date / Timings — single container, three rows separated by dividers */}
-        <div className="mt-6 w-full bg-[#18002C] border border-[#46176D]/30 rounded-[12px] p-4">
+        <div className="mt-6 w-full bg-surface border border-line rounded-lg p-4">
           {/* Location row */}
           <div className="flex items-center gap-3">
-            <MapPin size={16} className="shrink-0 text-[#F84E00]" />
+            <MapPin size={16} className="shrink-0 text-ink-muted" />
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wider text-[#727272]">Location</p>
+              <p className="t-caption text-ink-muted">Location</p>
               {event.location && event.location.trim() ? (
-                <p className="text-sm text-white font-medium">{event.location}</p>
+                <p className="t-body-strong text-ink">{event.location}</p>
               ) : (
-                <p className="text-sm text-[#727272] italic">Location to be announced</p>
+                <p className="t-body text-ink-muted italic">Location to be announced</p>
               )}
             </div>
           </div>
 
-          <div className="my-3 h-px bg-[#46176D]/20" />
+          <div className="my-3 h-px bg-line" />
 
           {/* Date row */}
           <div className="flex items-center gap-3">
-            <Calendar size={16} className="shrink-0 text-[#F84E00]" />
+            <Calendar size={16} className="shrink-0 text-ink-muted" />
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wider text-[#727272]">Date</p>
+              <p className="t-caption text-ink-muted">Date</p>
               {event.event_date && event.event_date.trim() ? (
-                <p className="text-sm text-white font-medium">{formatEventDateShort(event.event_date)}</p>
+                <p className="t-body-strong text-ink">{formatEventDateShort(event.event_date)}</p>
               ) : (
-                <p className="text-sm text-[#727272] italic">Date to be announced</p>
+                <p className="t-body text-ink-muted italic">Date to be announced</p>
               )}
               {event.registration_deadline && event.registration_deadline.trim() ? (
-                <p className="mt-0.5 text-xs text-[#727272]">Register before {event.registration_deadline}</p>
+                <p className="mt-1 t-caption text-ink-muted">Register before {event.registration_deadline}</p>
               ) : (
-                <p className="mt-0.5 text-xs text-[#727272]">Check event page for deadline</p>
+                <p className="mt-1 t-caption text-ink-muted">Check event page for deadline</p>
               )}
             </div>
           </div>
 
-          <div className="my-3 h-px bg-[#46176D]/20" />
+          <div className="my-3 h-px bg-line" />
 
           {/* Timings row */}
           <div className="flex items-center gap-3">
-            <Clock size={16} className="shrink-0 text-[#F84E00]" />
+            <Clock size={16} className="shrink-0 text-ink-muted" />
             <div className="min-w-0">
-              <p className="text-[11px] uppercase tracking-wider text-[#727272]">Timings</p>
+              <p className="t-caption text-ink-muted">Timings</p>
               {!(event.start_time && event.start_time.trim()) ? (
-                <p className="text-sm text-[#727272] italic">Timings to be announced</p>
+                <p className="t-body text-ink-muted italic">Timings to be announced</p>
               ) : !(event.end_time && event.end_time.trim()) ? (
-                <p className="text-sm text-white font-medium">{event.start_time}</p>
+                <p className="t-body-strong text-ink">{event.start_time}</p>
               ) : (
-                <p className="text-sm text-white font-medium">{event.start_time} – {event.end_time}</p>
+                <p className="t-body-strong text-ink">{event.start_time} – {event.end_time}</p>
               )}
             </div>
           </div>
         </div>
 
         <div className="mt-6">
-          <h2 className="text-lg font-bold text-white mb-2">About This Event</h2>
-          <p className="text-sm text-[#FFFBE9]/70 leading-relaxed whitespace-pre-line">{event.full_description}</p>
+          <h2 className="t-h3 text-ink mb-2">About This Event</h2>
+          <p className="t-body text-ink-2 leading-relaxed whitespace-pre-line">{event.full_description}</p>
         </div>
 
         <div className="mt-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[#BF72FF] mb-3">Skills You Will Learn</h3>
+          <h3 className="t-label text-ink-2 mb-3">Skills You Will Learn</h3>
           <div className="flex flex-wrap gap-2">
             {event.skills && event.skills.length > 0 ? (
               event.skills.map((s) => (
-                <span key={s} className="bg-[#280049] text-white rounded-lg px-3 py-1.5 text-xs font-medium border border-[#46176D]/50">{s}</span>
+                <span key={s} className="inline-flex h-8 items-center rounded-md border border-line bg-raised px-3 t-body text-ink">{s}</span>
               ))
             ) : (
-              <span className="bg-[#280049]/40 text-[#727272] rounded-lg px-3 py-1.5 text-xs font-medium border border-[#46176D]/30">Tags coming soon</span>
+              <span className="inline-flex h-8 items-center rounded-md border border-line bg-raised px-3 t-body text-ink-muted">Tags coming soon</span>
             )}
           </div>
         </div>
 
         <div className="mt-6">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-[#BF72FF] mb-3">Recommended For</h3>
+          <h3 className="t-label text-ink-2 mb-3">Recommended For</h3>
           <div className="flex flex-wrap gap-2">
             {event.recommended_for && event.recommended_for.length > 0 ? (
               event.recommended_for.map((s) => (
-                <span key={s} className="bg-[#46176D]/40 text-[#BF72FF] rounded-lg px-3 py-1.5 text-xs font-medium border border-[#BF72FF]/30">{s}</span>
+                <span key={s} className="inline-flex h-8 items-center rounded-md border border-line bg-chip px-3 t-body text-ink">{s}</span>
               ))
             ) : (
-              <span className="bg-[#46176D]/20 text-[#727272] rounded-lg px-3 py-1.5 text-xs font-medium border border-[#BF72FF]/10">Open to all</span>
+              <span className="inline-flex h-8 items-center rounded-md border border-line bg-raised px-3 t-body text-ink-muted">Open to all</span>
             )}
           </div>
         </div>
 
         {/* Per-event WhatsApp reminder toggle (inline, above Register) */}
-        <div className="mt-6 bg-[#18002C] border border-[#46176D]/30 rounded-xl p-5 flex items-center gap-4" data-testid="event-reminder-toggle-row">
+        <div className="mt-6 bg-surface border border-line rounded-lg p-4 flex items-center gap-4" data-testid="event-reminder-toggle-row">
           <WhatsAppIcon size={28} />
           <div className="flex-1 min-w-0">
-            <p className="text-white font-bold text-sm">Remind me on WhatsApp before this event</p>
-            <p className="text-[11px] text-[#727272] mt-0.5">We'll ping you 24 hours before it starts.</p>
+            <p className="t-body-strong text-ink">Remind me on WhatsApp before this event</p>
+            <p className="t-caption text-ink-muted mt-1">We'll ping you 24 hours before it starts.</p>
           </div>
           <Switch
             data-testid="event-reminder-switch"
             checked={remindOn}
             onCheckedChange={toggleReminder}
-            className="data-[state=checked]:bg-[#F84E00]"
           />
         </div>
 
@@ -380,15 +387,15 @@ const EventDetail = () => {
             disabled={!hasRegLink}
             title={hasRegLink ? "" : "Registration link coming soon"}
             data-testid="detail-register-btn"
-            className="w-full inline-flex items-center justify-center gap-2 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-full px-6 py-4 text-base font-bold shadow-[0_0_25px_rgba(248,78,0,0.4)] disabled:shadow-none transition-colors"
+            className={cn(buttonVariants({ variant: "primary", size: "lg" }), "w-full", "disabled:pointer-events-auto disabled:cursor-not-allowed")}
           >
-            Register Now <ChevronRight size={18}/>
+            Register Now <ChevronRight size={20} strokeWidth={1.75}/>
           </button>
         </div>
 
         {related.length > 0 && (
           <div className="mt-8">
-            <h2 className="text-[18px] font-bold text-white mb-5 text-left">More Events</h2>
+            <h2 className="t-h3 text-ink mb-4 text-left">More Events</h2>
             <div
               className="flex gap-3 overflow-x-auto scrollbar-hide pl-0 pr-4"
               style={{ WebkitOverflowScrolling: "touch" }}
@@ -404,10 +411,10 @@ const EventDetail = () => {
       {/* Sticky Register Now bar — mobile only (hidden at md and above) */}
       <div
         data-testid="sticky-register-bar"
-        className="fixed bottom-[60px] left-0 right-0 z-50 md:hidden bg-[#0D0D0D] border-t border-[#46176D]/40 px-4 py-3"
+        className="fixed bottom-[52px] left-0 right-0 z-40 md:hidden bg-canvas border-t border-line px-4 py-3"
       >
         <div className="flex items-center gap-3">
-          <p className="flex-1 min-w-0 truncate text-[13px] font-semibold text-[#F84E00]">
+          <p className="flex-1 min-w-0 truncate t-body-strong text-danger">
             {status.text}
           </p>
           <button
@@ -416,7 +423,7 @@ const EventDetail = () => {
             disabled={!hasRegLink}
             title={hasRegLink ? "" : "Registration link coming soon"}
             data-testid="sticky-register-btn"
-            className="shrink-0 w-[clamp(168px,58vw,230px)] inline-flex items-center justify-center bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-[20px] px-5 py-2.5 text-sm font-bold transition-colors"
+            className={cn(buttonVariants({ variant: "primary", size: "sm" }), "shrink-0 w-[clamp(168px,58vw,230px)]", "disabled:pointer-events-auto disabled:cursor-not-allowed")}
           >
             Register Now
           </button>
