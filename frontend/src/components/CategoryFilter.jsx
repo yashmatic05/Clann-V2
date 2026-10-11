@@ -18,10 +18,13 @@ export const chipToCategory = (chip) => {
   return map[chip];
 };
 
+// R2: orange is never used for a filter — the active chip uses the
+// selected/on-selected pair, which is the reserved "this is chosen" treatment.
+// R6: chips are min-h-9 with px-4 padding, and gaps sit on the 4px grid.
 const CategoryFilter = ({ active, onChange }) => {
   return (
     <div data-testid="category-filter" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-      <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
         {CATEGORIES.map((c) => {
           const isActive = c === active;
           return (
@@ -29,17 +32,17 @@ const CategoryFilter = ({ active, onChange }) => {
               key={c}
               data-testid={`chip-${c.toLowerCase().replace(/\s|&/g, '-')}`}
               onClick={() => onChange(c)}
-              className={`shrink-0 relative rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+              className={`shrink-0 relative min-h-9 rounded-full px-4 t-button transition-colors duration-fast ease-standard ${
                 isActive
-                  ? "text-white"
-                  : "bg-transparent text-[#BF72FF]/80 hover:text-white hover:bg-[#280049]/60"
+                  ? "text-on-selected"
+                  : "bg-transparent text-ink-2 hover:bg-raised hover:text-ink"
               }`}
             >
               {isActive && (
                 <motion.span
                   layoutId="categoryActivePill"
                   transition={{ type: "tween", ease: "easeInOut", duration: 0.25 }}
-                  className="absolute inset-0 rounded-full bg-[#F84E00]"
+                  className="absolute inset-0 rounded-full bg-selected"
                 />
               )}
               <span className="relative z-10">{c}</span>

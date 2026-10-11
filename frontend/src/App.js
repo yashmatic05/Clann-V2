@@ -1,8 +1,15 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
+import {
+  THEME_STORAGE_KEY,
+  DEFAULT_THEME,
+  THEME_COLOR_META,
+  resolveForcedTheme,
+} from "@/lib/theme";
 
 import Home from "@/pages/Home";
 import EventDetail from "@/pages/EventDetail";
@@ -17,18 +24,32 @@ import CalendarPage from "@/pages/CalendarPage";
 import Search from "@/pages/Search";
 import EventsListPage from "@/pages/EventsListPage";
 import OrganizerSubmit from "@/pages/OrganizerSubmit";
-
-const TOAST_OPTIONS = {
-  style: {
-    background: "#18002C",
-    border: "1px solid #46176D",
-    color: "#FFFFFF",
-  },
-};
+import DesignSystem from "@/pages/DesignSystem";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
+/**
+ * Keeps <meta name="theme-color"> in step with the active theme so mobile
+ * browser chrome matches the canvas token (cream in light, near-black in dark).
+ * The meta tag cannot resolve a CSS custom property, hence the literal pair in
+ * THEME_COLOR_META — the only sanctioned hex values in src/.
+ */
+function ThemeColorMeta() {
+  const { resolvedTheme } = useTheme();
+
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return;
+    meta.setAttribute(
+      "content",
+      resolvedTheme === "light" ? THEME_COLOR_META.light : THEME_COLOR_META.dark
+    );
+  }, [resolvedTheme]);
+
   return null;
 }
 
@@ -54,6 +75,9 @@ function AppRouter() {
         <Route path="/organizer" element={<OrganizerSubmit />} />
         <Route path="/admin-clann-secret" element={<AdminLogin />} />
         <Route path="/admin" element={<AdminPanel />} />
+        {/* Design-system style guide (DESIGN_SYSTEM.md). Not linked from
+            anywhere in the product; visit /design-system directly. */}
+        <Route path="/design-system" element={<DesignSystem />} />
         <Route path="*" element={<Home />} />
       </Routes>
     </>
@@ -61,17 +85,29 @@ function AppRouter() {
 }
 
 function App() {
+  // undefined unless ?previewTheme= is present, in which case that theme is
+  // forced for this tab only. With ENABLE_LIGHT_MODE on (Part 5) the visitor's
+  // explicit choice decides, else their system preference via enableSystem
+  // above. See src/lib/theme.js.
+  const forcedTheme = useMemo(() => resolveForcedTheme(), []);
+
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRouter />
-        <Toaster
-          theme="dark"
-          position="top-center"
-          toastOptions={TOAST_OPTIONS}
-        />
-      </BrowserRouter>
-    </AuthProvider>
+    <ThemeProvider
+      attribute="class"
+      storageKey={THEME_STORAGE_KEY}
+      defaultTheme={DEFAULT_THEME}
+      enableSystem
+      disableTransitionOnChange
+      forcedTheme={forcedTheme}
+    >
+      <ThemeColorMeta />
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRouter />
+          <Toaster position="top-center" />
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

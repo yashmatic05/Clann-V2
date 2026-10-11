@@ -12,6 +12,12 @@ import {
   Search as SearchIcon,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import FormField from "@/components/ui/form-field";
+import { Input, fieldBaseClassNames } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import BottomTabBar from "@/components/BottomTabBar";
 import Footer from "@/components/Footer";
 
@@ -42,10 +48,25 @@ const emptyForm = {
   notes: "",
 };
 
+// R8 status badges: always icon + word, never colour alone. There is no
+// `warning` token in the design system, so R4's "amber pending becomes
+// neutral bg-raised with a clock icon" is what `pending` maps to.
 const STATUS_LABELS = {
-  pending: { text: "Pending review", cls: "bg-amber-400/10 text-amber-400 border-amber-400/30" },
-  approved: { text: "Approved — live on Clann", cls: "bg-emerald-400/10 text-emerald-400 border-emerald-400/30" },
-  rejected: { text: "Rejected", cls: "bg-red-400/10 text-red-400 border-red-400/30" },
+  pending: { text: "Pending review", Icon: Clock, cls: "bg-raised text-ink border-line-input" },
+  approved: { text: "Approved — live on Clann", Icon: CheckCircle2, cls: "bg-ok-bg text-ok border-ok" },
+  rejected: { text: "Rejected", Icon: XCircle, cls: "bg-danger-bg text-danger border-danger" },
+};
+const STATUS_FALLBACK = { text: "", Icon: null, cls: "bg-raised text-ink-2 border-line-input" };
+
+const StatusBadge = ({ status }) => {
+  const st = STATUS_LABELS[status] || STATUS_FALLBACK;
+  const Icon = st.Icon;
+  return (
+    <span className={cn("inline-flex h-6 items-center gap-1 rounded-full border px-2 t-caption font-bold", st.cls)}>
+      {Icon ? <Icon size={16} strokeWidth={1.75} aria-hidden="true" /> : null}
+      <span>{st.text || status}</span>
+    </span>
+  );
 };
 
 const OrganizerSubmit = () => {
@@ -146,34 +167,34 @@ const OrganizerSubmit = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-6 overflow-x-hidden max-w-full">
+    <div className="min-h-screen bg-canvas pb-16 md:pb-6 overflow-x-hidden max-w-full">
       <Navbar />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 md:pt-12">
         {/* Hero */}
         <div>
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">List Your Event on Clann</h1>
-          <p className="text-sm text-[#727272] mt-2 max-w-xl">
+          <h1 className="t-h1 text-ink">List Your Event on Clann</h1>
+          <p className="t-body text-ink-muted mt-2 max-w-xl">
             Tell us about your event — our team reviews every submission before it goes live.
           </p>
         </div>
 
         {submitted ? (
           /* -------- Success state -------- */
-          <div data-testid="submission-success" className="mt-8 rounded-2xl border border-emerald-400/30 bg-[#18002C] p-6 md:p-8">
+          <div data-testid="submission-success" className="mt-8 rounded-lg border border-ok bg-surface p-6 md:p-8">
             <div className="flex items-center gap-3">
-              <CheckCircle2 className="text-emerald-400" size={28} />
-              <h2 className="text-xl font-black text-white tracking-tight">Submission received!</h2>
+              <CheckCircle2 className="text-ok" size={24} strokeWidth={1.75} aria-hidden="true" />
+              <h2 className="t-h2 text-ink">Submission received!</h2>
             </div>
-            <p className="text-sm text-[#727272] mt-3">
-              <span className="text-white font-bold">"{submitted.title}"</span> is now in our review queue.
+            <p className="t-body text-ink-muted mt-3">
+              <span className="t-body-strong text-ink">"{submitted.title}"</span> is now in our review queue.
               You'll find it in the admin approval queue as pending.
             </p>
-            <div className="mt-4 rounded-xl bg-[#0D0D0D] border border-[#46176D]/40 p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div className="mt-4 rounded-lg bg-canvas border border-line p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
               <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold">Your submission ID</div>
+                <div className="t-label text-ink-2 font-bold">Your submission ID</div>
                 <div className="flex items-center gap-2 mt-1">
-                  <div data-testid="submission-id" className="text-white font-mono text-sm">{submitted.submission_id}</div>
+                  <div data-testid="submission-id" className="t-body text-ink font-mono">{submitted.submission_id}</div>
                   <button
                     type="button"
                     data-testid="copy-submission-id"
@@ -183,191 +204,186 @@ const OrganizerSubmit = () => {
                         toast.success("Submission ID copied");
                       } catch { toast.error("Failed to copy"); }
                     }}
-                    className="text-[#BF72FF] hover:text-white transition-colors"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-raised hover:text-ink transition-colors duration-fast ease-standard"
                     aria-label="Copy submission ID"
                   >
-                    <Copy size={14} />
+                    <Copy size={16} strokeWidth={1.75} />
                   </button>
                 </div>
               </div>
-              <div className="text-[11px] text-[#727272] sm:text-right">
+              <div className="t-caption text-ink-muted sm:text-right">
                 Save this ID + your email to check status below.
               </div>
             </div>
             <button
               data-testid="submit-another-btn"
               onClick={() => { setSubmitted(null); setForm(emptyForm); }}
-              className="mt-4 text-xs font-bold uppercase tracking-widest text-[#BF72FF] hover:text-white transition-colors"
+              className="mt-4 t-caption font-bold text-cta-text hover:underline transition-colors duration-fast ease-standard"
             >
-              + Submit another event
+              List another event
             </button>
           </div>
         ) : (
           /* -------- Form -------- */
-          <div className="mt-8 bg-[#18002C] border border-[#46176D]/40 rounded-2xl p-5 sm:p-7 space-y-5">
-            <h2 className="text-lg font-black text-white tracking-tight">Organizer details</h2>
+          <div className="mt-8 bg-surface border border-line rounded-lg p-4 sm:p-6 space-y-4">
+            <h2 className="t-h3 text-ink">Organizer details</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Your Name *" error={errors.organizer_name}>
-                <input data-testid="org-name" value={form.organizer_name} onChange={set("organizer_name")} placeholder="e.g. Ananya Sharma" className={errors.organizer_name ? inputErrorCls : inputCls} />
-              </Field>
-              <Field label="Email *" error={errors.organizer_email}>
-                <input data-testid="org-email" type="email" value={form.organizer_email} onChange={set("organizer_email")} placeholder="you@example.com" className={errors.organizer_email ? inputErrorCls : inputCls} />
-              </Field>
-              <Field label="Phone (optional)">
-                <input data-testid="org-phone" value={form.organizer_phone} onChange={set("organizer_phone")} placeholder="+91 98765 43210" className={inputCls} />
-              </Field>
+              <FormField label="Your Name" required error={errors.organizer_name}>
+                <Input data-testid="org-name" value={form.organizer_name} onChange={set("organizer_name")} placeholder="e.g. Ananya Sharma" />
+              </FormField>
+              <FormField label="Email" required error={errors.organizer_email}>
+                <Input data-testid="org-email" type="email" value={form.organizer_email} onChange={set("organizer_email")} placeholder="you@example.com" />
+              </FormField>
+              <FormField label="Phone (optional)">
+                <Input data-testid="org-phone" value={form.organizer_phone} onChange={set("organizer_phone")} placeholder="+91 98765 43210" />
+              </FormField>
             </div>
 
-            <hr className="border-[#46176D]/30" />
+            <hr className="border-line" />
 
-            <h2 className="text-lg font-black text-white tracking-tight">Event details</h2>
-            <Field label="Event Title *" error={errors.title}>
-              <input data-testid="sub-title" value={form.title} onChange={set("title")} placeholder="e.g. Design Thinking Bootcamp" className={errors.title ? inputErrorCls : inputCls} />
-            </Field>
+            <h2 className="t-h3 text-ink">Event details</h2>
+            <FormField label="Event Title" required error={errors.title}>
+              <Input data-testid="sub-title" value={form.title} onChange={set("title")} placeholder="e.g. Design Thinking Bootcamp" />
+            </FormField>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Category">
+              <FormField label="Category">
                 <SelectBox data-testid="sub-category" value={form.category} onChange={set("category")} options={CATEGORIES} />
-              </Field>
-              <Field label="Mode">
+              </FormField>
+              <FormField label="Mode">
                 <SelectBox data-testid="sub-mode" value={form.mode} onChange={set("mode")} options={MODES} />
-              </Field>
+              </FormField>
             </div>
-            <Field label="Short Description * (shown on the event card)" error={errors.short_description}>
-              <input data-testid="sub-short" maxLength={150} value={form.short_description} onChange={set("short_description")} placeholder="One or two lines that make people want to click" className={errors.short_description ? inputErrorCls : inputCls} />
-            </Field>
-            <Field label="Full Description">
-              <textarea data-testid="sub-full" rows={4} value={form.full_description} onChange={set("full_description")} placeholder="Agenda, speakers, takeaways…" className={`${inputCls} resize-y`} />
-            </Field>
-            <Field label="Event Image URL (optional — leave blank if you don't have a real event image)">
-              <input data-testid="sub-image" value={form.image_url} onChange={set("image_url")} placeholder="https://example.com/event-banner.jpg" className={inputCls} />
-            </Field>
+            <FormField label="Short Description (shown on the event card)" required error={errors.short_description}>
+              <Input data-testid="sub-short" maxLength={150} value={form.short_description} onChange={set("short_description")} placeholder="One or two lines that make people want to click" />
+            </FormField>
+            <FormField label="Full Description">
+              <Textarea data-testid="sub-full" rows={4} value={form.full_description} onChange={set("full_description")} placeholder="Agenda, speakers, takeaways…" className="resize-y" />
+            </FormField>
+            <FormField label="Event Image URL (optional — leave blank if you don't have a real event image)">
+              <Input data-testid="sub-image" value={form.image_url} onChange={set("image_url")} placeholder="https://example.com/event-banner.jpg" />
+            </FormField>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Venue / Location">
-                <input data-testid="sub-location" value={form.location} onChange={set("location")} placeholder="e.g. Indiranagar, Bengaluru" className={inputCls} />
-              </Field>
-              <Field label="City">
+              <FormField label="Venue / Location">
+                <Input data-testid="sub-location" value={form.location} onChange={set("location")} placeholder="e.g. Indiranagar, Bengaluru" />
+              </FormField>
+              <FormField label="City">
                 <SelectBox data-testid="sub-city" value={form.city} onChange={set("city")} options={CITIES} />
-              </Field>
+              </FormField>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Field label="Event Date *" error={errors.event_date}>
-                <input data-testid="sub-date" type="date" value={form.event_date} onChange={set("event_date")} className={errors.event_date ? inputErrorCls : inputCls} />
-              </Field>
-              <Field label="Start">
-                <input data-testid="sub-start" type="time" value={form.start_time} onChange={set("start_time")} className={inputCls} />
-              </Field>
-              <Field label="End">
-                <input data-testid="sub-end" type="time" value={form.end_time} onChange={set("end_time")} className={inputCls} />
-              </Field>
-              <Field label="Reg. Deadline">
-                <input data-testid="sub-deadline" type="date" value={form.registration_deadline} onChange={set("registration_deadline")} className={inputCls} />
-              </Field>
+              <FormField label="Event Date" required error={errors.event_date}>
+                <Input data-testid="sub-date" type="date" value={form.event_date} onChange={set("event_date")} />
+              </FormField>
+              <FormField label="Start">
+                <Input data-testid="sub-start" type="time" value={form.start_time} onChange={set("start_time")} />
+              </FormField>
+              <FormField label="End">
+                <Input data-testid="sub-end" type="time" value={form.end_time} onChange={set("end_time")} />
+              </FormField>
+              <FormField label="Reg. Deadline">
+                <Input data-testid="sub-deadline" type="date" value={form.registration_deadline} onChange={set("registration_deadline")} />
+              </FormField>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-              <div className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#46176D]/40">
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Paid Event</label>
-                <button
-                  type="button"
+              <div className="flex items-center justify-between gap-4 bg-canvas rounded-lg px-4 py-3 border border-line">
+                <label htmlFor="sub-paid" className="t-label text-ink-2">Paid Event</label>
+                <Switch
+                  id="sub-paid"
                   data-testid="sub-paid"
-                  onClick={() => setForm((f) => ({ ...f, is_paid: !f.is_paid }))}
-                  className={`w-10 h-5 rounded-full transition-colors relative ${form.is_paid ? "bg-[#F84E00]" : "bg-[#46176D]"}`}
-                  aria-pressed={form.is_paid}
-                >
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${form.is_paid ? "left-[22px]" : "left-0.5"}`} />
-                </button>
+                  checked={form.is_paid}
+                  onCheckedChange={(v) => setForm((f) => ({ ...f, is_paid: v }))}
+                />
               </div>
               {form.is_paid && (
-                <Field label="Price">
-                  <input data-testid="sub-price" value={form.price} onChange={set("price")} placeholder="₹299" className={inputCls} />
-                </Field>
+                <FormField label="Price">
+                  <Input data-testid="sub-price" value={form.price} onChange={set("price")} placeholder="₹299" />
+                </FormField>
               )}
-              <Field label="Total Seats">
-                <input data-testid="sub-seats" type="number" min="0" value={form.total_seats} onChange={set("total_seats")} placeholder="30" className={inputCls} />
-              </Field>
+              <FormField label="Total Seats">
+                <Input data-testid="sub-seats" type="number" min="0" value={form.total_seats} onChange={set("total_seats")} placeholder="30" />
+              </FormField>
             </div>
-            <Field label="Registration Link (optional)">
-              <input data-testid="sub-link" value={form.external_link} onChange={set("external_link")} placeholder="https://…" className={inputCls} />
-            </Field>
-            <Field label="Anything else we should know? (optional)">
-              <textarea data-testid="sub-notes" rows={3} value={form.notes} onChange={set("notes")} placeholder="Pricing details, links to past events, target audience…" className={`${inputCls} resize-y`} />
-            </Field>
+            <FormField label="Registration Link (optional)">
+              <Input data-testid="sub-link" value={form.external_link} onChange={set("external_link")} placeholder="https://…" />
+            </FormField>
+            <FormField label="Anything else we should know? (optional)">
+              <Textarea data-testid="sub-notes" rows={3} value={form.notes} onChange={set("notes")} placeholder="Pricing details, links to past events, target audience…" className="resize-y" />
+            </FormField>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <button
                 data-testid="submit-submission-btn"
                 onClick={submit}
                 disabled={submitting}
-                className="flex-1 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:opacity-60 text-white rounded-full px-6 py-3 text-sm font-bold inline-flex items-center justify-center gap-2 transition-colors"
+                className={cn(buttonVariants({ variant: "primary", size: "md" }), "flex-1")}
               >
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-                {submitting ? "Submitting…" : "Submit for Review"}
+                {submitting ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin" /> : <Send size={16} strokeWidth={1.75} />}
+                Send for review
               </button>
               <Link
                 to="/"
-                className="sm:flex-none text-center text-xs font-bold uppercase tracking-widest text-[#BF72FF] hover:text-white transition-colors px-4 py-3"
+                className="sm:flex-none text-center t-caption font-bold text-cta-text hover:underline transition-colors duration-fast ease-standard px-4 py-3"
               >
                 ← Back to events
               </Link>
             </div>
-            <p className="text-[11px] text-[#727272]">
-              <Clock size={11} className="inline mr-1 -mt-0.5" />
+            <p className="t-caption text-ink-muted inline-flex items-start gap-2">
+              <Clock size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
               Submissions are usually reviewed within 2–3 days. Approved events go live automatically.
             </p>
           </div>
         )}
 
         {/* -------- Track your submission -------- */}
-        <div className="mt-8 bg-[#18002C] border border-[#46176D]/40 rounded-2xl p-5 sm:p-7">
+        <div className="mt-8 bg-surface border border-line rounded-lg p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-1">
-            <SearchIcon size={16} className="text-[#BF72FF]" />
-            <h2 className="text-lg font-black text-white tracking-tight">Check submission status</h2>
+            <SearchIcon size={20} strokeWidth={1.75} className="text-ink-muted" aria-hidden="true" />
+            <h2 className="t-h3 text-ink">Check submission status</h2>
           </div>
-          <p className="text-xs text-[#727272] mb-4">Use the ID you received after submitting, plus the email you submitted with.</p>
+          <p className="t-caption text-ink-muted mb-4">Use the ID you received after submitting, plus the email you submitted with.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Submission ID">
-              <input data-testid="track-id-input" value={trackId} onChange={(e) => setTrackId(e.target.value)} placeholder="sub_xxxxxxxxxx" className={inputCls} />
-            </Field>
-            <Field label="Email">
-              <input data-testid="track-email-input" type="email" value={trackEmail} onChange={(e) => setTrackEmail(e.target.value)} placeholder="you@example.com" className={inputCls} />
-            </Field>
+            <FormField label="Submission ID">
+              <Input data-testid="track-id-input" value={trackId} onChange={(e) => setTrackId(e.target.value)} placeholder="sub_xxxxxxxxxx" />
+            </FormField>
+            <FormField label="Email">
+              <Input data-testid="track-email-input" type="email" value={trackEmail} onChange={(e) => setTrackEmail(e.target.value)} placeholder="you@example.com" />
+            </FormField>
           </div>
           <button
             data-testid="track-status-btn"
             onClick={track}
             disabled={tracking}
-            className="mt-4 inline-flex items-center gap-2 border border-[#46176D] text-[#BF72FF] hover:bg-[#280049] hover:text-white disabled:opacity-60 rounded-full px-5 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors"
+            className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-4")}
           >
-            {tracking ? <Loader2 size={13} className="animate-spin" /> : <SearchIcon size={13} />}
-            {tracking ? "Checking…" : "Check status"}
+            {tracking ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin" /> : <SearchIcon size={16} strokeWidth={1.75} />}
+            Check my submission
           </button>
 
           {trackError && (
-            <div data-testid="track-error" className="mt-4 rounded-xl bg-red-400/5 border border-red-400/30 px-4 py-3 text-xs text-red-300 flex items-start gap-2">
-              <XCircle size={14} className="shrink-0 mt-0.5" />
+            <div data-testid="track-error" role="alert" className="mt-4 rounded-md bg-danger-bg border border-danger p-4 t-caption text-danger flex items-start gap-2">
+              <XCircle size={16} strokeWidth={1.75} className="shrink-0" aria-hidden="true" />
               {trackError}
             </div>
           )}
           {trackResult && (
-            <div data-testid="track-result" className="mt-4 rounded-xl bg-[#0D0D0D] border border-[#46176D]/40 p-4">
+            <div data-testid="track-result" className="mt-4 rounded-lg bg-canvas border border-line p-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
-                <span className="text-sm font-bold text-white">{trackResult.title}</span>
-                <span className={`text-[10px] font-bold uppercase tracking-widest border rounded-full px-3 py-1 ${STATUS_LABELS[trackResult.status]?.cls || "bg-[#280049] text-[#BF72FF] border-[#46176D]"}`}>
-                  {STATUS_LABELS[trackResult.status]?.text || trackResult.status}
-                </span>
+                <span className="t-body-strong text-ink">{trackResult.title}</span>
+                <StatusBadge status={trackResult.status} />
               </div>
               {trackResult.status === "approved" && trackResult.created_event_id && (
-                <Link to={`/event/${trackResult.created_event_id}`} className="mt-3 inline-block text-xs font-bold text-[#BF72FF] hover:text-white transition-colors">
+                <Link to={`/event/${trackResult.created_event_id}`} className="mt-3 inline-block t-caption font-bold text-cta-text hover:underline transition-colors duration-fast ease-standard">
                   View your live event →
                 </Link>
               )}
               {trackResult.status === "rejected" && trackResult.reject_reason && (
-                <p className="mt-3 text-xs text-[#727272]">
-                  Reason: <span className="text-white/90">{trackResult.reject_reason}</span>
+                <p className="mt-3 t-caption text-ink-muted">
+                  Reason: <span className="text-ink">{trackResult.reject_reason}</span>
                 </p>
               )}
               {trackResult.admin_note && (
-                <p className="mt-3 text-xs text-[#BF72FF]">
-                  Note from Clann team: <span className="text-white/90">{trackResult.admin_note}</span>
+                <p className="mt-3 t-caption text-ink-2">
+                  Note from Clann team: <span className="text-ink">{trackResult.admin_note}</span>
                 </p>
               )}
             </div>
@@ -381,20 +397,9 @@ const OrganizerSubmit = () => {
   );
 };
 
-const inputCls = "w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors";
-const inputErrorCls = "w-full bg-[#0D0D0D] border border-red-500 focus:border-red-400 rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors";
-
-const Field = ({ label, error, children }) => (
-  <div>
-    <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block mb-2">{label}</label>
-    {children}
-    {error && <p className="text-red-400 text-[11px] mt-1">{error}</p>}
-  </div>
-);
-
 const SelectBox = ({ "data-testid": testid, value, onChange, options }) => (
-  <select data-testid={testid} value={value} onChange={onChange} className={inputCls}>
-    {options.map((o) => <option key={o} value={o} className="bg-[#0D0D0D] text-white">{o}</option>)}
+  <select data-testid={testid} value={value} onChange={onChange} className={cn(fieldBaseClassNames, "h-11 px-4")}>
+    {options.map((o) => <option key={o} value={o} className="bg-surface text-ink">{o}</option>)}
   </select>
 );
 

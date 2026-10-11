@@ -13,6 +13,8 @@ import MobileEventFeed from "@/components/MobileEventFeed";
 import { useAuth } from "@/context/AuthContext";
 import { assignEventImages } from "@/lib/image-fallback";
 import { Landmark, Megaphone } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const MODES = ["Both", "Online", "Offline"];
 
@@ -124,21 +126,21 @@ const Home = () => {
   }, [filteredEvents]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] overflow-x-hidden max-w-full">
+    <div className="min-h-screen bg-canvas overflow-x-hidden max-w-full">
       <Navbar />
       <HeroBanner events={featuredBanners} imageMap={imageMap} usedImages={usedImages} />
       <WhatsAppReminderBar testid="whatsapp-bar-home" />
 
       {/* Row 1 — Online / Offline mode toggle with live event counts */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="inline-flex bg-[#18002C] border border-[#46176D]/40 rounded-full p-1" data-testid="mode-toggle">
+        <div className="inline-flex bg-raised rounded-full p-1" data-testid="mode-toggle">
           {MODES.map((m) => (
             <button
               key={m}
               data-testid={`mode-${m.toLowerCase()}`}
               onClick={() => setMode(m)}
-              className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full transition-colors ${
-                mode === m ? "bg-[#F84E00] text-white" : "text-[#BF72FF] hover:text-white"
+              className={`rounded-full px-4 min-h-9 t-button transition-colors duration-fast ease-standard ${
+                mode === m ? "bg-selected text-on-selected" : "text-ink-2 hover:text-ink"
               }`}
             >
               {m} ({modeCounts[m.toLowerCase()]})
@@ -163,19 +165,19 @@ const Home = () => {
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
-                  <div key={`skeleton-${i}`} className="bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 animate-pulse">
-                    <div className="aspect-video bg-[#280049]" />
-                    <div className="p-5 space-y-3">
-                      <div className="h-4 bg-[#280049] rounded" />
-                      <div className="h-3 bg-[#280049] rounded w-3/4" />
+                  <div key={`skeleton-${i}`} className="bg-surface rounded-lg overflow-hidden border border-line animate-pulse">
+                    <div className="aspect-video bg-raised" />
+                    <div className="p-4 space-y-3">
+                      <div className="h-4 bg-raised rounded-md" />
+                      <div className="h-3 bg-raised rounded-md w-3/4" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : filteredEvents.length === 0 ? (
-              <div data-testid="empty-state" className="py-20 text-center text-[#727272]">
-                <p className="text-lg font-bold text-white mb-1">No events found</p>
-                <p className="text-sm">Try changing filters</p>
+              <div data-testid="empty-state" className="py-16 text-center text-ink-muted">
+                <p className="t-h3 text-ink mb-1">No events found</p>
+                <p className="t-body">Try changing filters</p>
               </div>
             ) : (
               <div data-testid="event-grid" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -201,14 +203,14 @@ const Home = () => {
       </AnimatePresence>
 
       {govEvents.length > 0 && (
-        <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20 ${isAll ? "hidden md:block" : ""}`} data-testid="government-section">
+        <section className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 md:mt-16 ${isAll ? "hidden md:block" : ""}`} data-testid="government-section">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#46176D]/40 border border-[#BF72FF]/40 flex items-center justify-center text-[#BF72FF]">
-              <Landmark size={18} />
+            <div className="h-10 w-10 rounded-lg bg-raised border border-line flex items-center justify-center text-ink-muted">
+              <Landmark size={20} strokeWidth={1.75} />
             </div>
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Government Events</h2>
-              <p className="text-xs text-[#727272]">Curated public sector programs and initiatives</p>
+              <h2 className="t-h2 text-ink">Government Events</h2>
+              <p className="t-caption text-ink-muted">Curated public sector programs and initiatives</p>
             </div>
           </div>
           <div data-testid="government-grid" className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -227,15 +229,15 @@ const Home = () => {
       )}
 
       {/* Organizer CTA — public submission workflow */}
-      <section data-testid="organizer-cta" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-14 md:mt-20 pb-24 md:pb-6">
-        <div className="rounded-2xl border border-[#46176D]/40 bg-[#18002C] p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+      <section data-testid="organizer-cta" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 md:mt-16 pb-16 md:pb-6">
+        <div className="rounded-lg border border-line bg-surface p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#F84E00] shrink-0">
-              <Megaphone size={22} />
+            <div className="h-12 w-12 rounded-lg bg-raised border border-line flex items-center justify-center text-ink-muted shrink-0">
+              <Megaphone size={24} strokeWidth={1.75} />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-black text-white tracking-tight">Organizing an event in Delhi?</h2>
-              <p className="text-sm text-[#727272] mt-1 max-w-md">
+              <h2 className="t-h2 text-ink">Organizing an event in Delhi?</h2>
+              <p className="t-body text-ink-muted mt-1 max-w-md">
                 List it on Clann — our team reviews every submission before it goes live on the platform.
               </p>
             </div>
@@ -243,7 +245,7 @@ const Home = () => {
           <Link
             to="/organizer"
             data-testid="organizer-cta-btn"
-            className="shrink-0 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] text-white rounded-full px-6 py-3 text-sm font-bold transition-colors"
+            className={cn(buttonVariants({ variant: "primary", size: "md" }), "shrink-0")}
           >
             Submit Your Event
           </Link>

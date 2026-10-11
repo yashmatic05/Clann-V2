@@ -64,7 +64,11 @@
   "scripts": {
     "start": "craco start",
     "build": "craco build",
-    "test": "craco test"
+    "test": "craco test",
+    "test:ci": "craco test --watchAll=false",
+    "lint:design": "node scripts/check-design-system.js",
+    "lint:design:json": "node scripts/check-design-system.js --json",
+    "verify": "npm run lint:design && npm run test:ci && npm run build"
   },
   "browserslist": {
     "production": [

@@ -12,22 +12,28 @@ import { toast } from "sonner";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import { priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
+import { buttonVariants } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const MAX = 300;
 
 /* ------------------------------------------------------------------ */
-/* Helpers — identical logic/colors to CompactEventCard / EventCard    */
+/* Helpers — chip colors match CompactEventCard / EventCard (R2)          */
 /* ------------------------------------------------------------------ */
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
-  if (c.includes("workshop")) return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-  if (c.includes("hackathon")) return "bg-orange-500/15 text-orange-300 border-orange-400/40";
-  if (c.includes("meetup")) return "bg-teal-500/15 text-teal-300 border-teal-400/40";
-  if (c.includes("conference")) return "bg-blue-500/15 text-blue-300 border-blue-400/40";
-  if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
-  if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
-  return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+  if (c.includes("workshop")) return "bg-chip text-ink border-line";
+  if (c.includes("hackathon")) return "bg-chip text-ink border-line";
+  if (c.includes("meetup")) return "bg-chip text-ink border-line";
+  if (c.includes("conference")) return "bg-chip text-ink border-line";
+  if (c.includes("walk")) return "bg-chip text-ink border-line";
+  if (c.includes("art")) return "bg-chip text-ink border-line";
+  return "bg-chip text-ink border-line";
 };
+
+const chipClass =
+  "inline-flex h-6 shrink-0 items-center rounded-md border px-1 t-caption font-semibold whitespace-nowrap";
 
 const parseDate = (s) => {
   if (!s) return null;
@@ -113,61 +119,61 @@ const SavedEventCard = ({ event, index = 0, onUnsave, usedImages, imageSrc }) =>
       <Link
         to={`/event/${event.event_id}`}
         data-testid={`saved-compact-card-${index}`}
-        className={`group w-[200px] h-[280px] shrink-0 flex flex-col bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 hover:border-[#46176D] transition-[border-color,opacity,transform] duration-300 ${removing ? "opacity-0 scale-95" : ""}`}
+        className={`group w-[200px] h-[280px] shrink-0 flex flex-col bg-surface rounded-lg overflow-hidden border border-line hover:border-line-input transition-[border-color,opacity,transform] duration-standard ease-standard ${removing ? "opacity-0 scale-95" : ""}`}
       >
         {/* Image — fixed 100px */}
-        <div className="relative h-[100px] shrink-0 overflow-hidden bg-[#280049]">
+        <div className="relative h-[100px] shrink-0 overflow-hidden bg-raised">
           <img
             {...eventImageHandlers(event, usedImages, imageSrc)}
             alt={event.title}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover"
           />
-          {/* Filled-orange bookmark → unsave confirmation */}
+          {/* Filled bookmark in the selected pair → unsave confirmation */}
           <button
             type="button"
             onClick={askUnsave}
             aria-label="Remove from saved"
             title="Remove from saved"
             data-testid={`saved-unsave-btn-${index}`}
-            className="absolute top-2 right-2 p-[6px] rounded-full bg-black/50 text-[#F84E00] transition-colors"
+            className="absolute top-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border border-selected bg-selected text-on-selected transition-colors duration-fast ease-standard"
           >
-            <Bookmark size={12} fill="currentColor" />
+            <Bookmark size={16} strokeWidth={1.75} fill="currentColor" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-h-0 p-3 flex flex-col gap-1">
-          <div className="flex items-center justify-between gap-1.5">
-            <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+        <div className="flex-1 min-h-0 p-2 flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className={`${chipClass} ${categoryColor(event.category)}`}>
               {event.category}
             </span>
-            <span className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${priceBadgeClass(event)}`}>
+            <span className={`${chipClass} ${priceBadgeClass(event)}`}>
               {priceLabel(event)}
             </span>
           </div>
 
-          <h3 className="text-xs font-bold text-white tracking-tight leading-snug line-clamp-2">
+          <h3 className="t-caption font-bold text-ink line-clamp-2">
             {event.title}
           </h3>
 
-          <p className="flex items-center gap-1 text-[10px] text-white/80 truncate">
-            <MapPin size={10} className="text-[#BF72FF] shrink-0" />
+          <p className="flex items-center gap-1 t-caption text-ink-2 truncate">
+            <MapPin size={16} strokeWidth={1.75} className="text-ink-muted shrink-0" />
             <span className="truncate">
               {event.city}{event.location ? ` | ${event.location.split(",")[0]}` : ""}
             </span>
           </p>
 
-          <p className="flex items-center gap-1 text-[10px] text-white/80 truncate">
-            <Calendar size={10} className="text-[#BF72FF] shrink-0" />
+          <p className="flex items-center gap-1 t-caption text-ink-2 truncate">
+            <Calendar size={16} strokeWidth={1.75} className="text-ink-muted shrink-0" />
             <span className="truncate">{displayDate}</span>
           </p>
 
-          <p className={`text-[10px] font-semibold truncate ${
-            status.tone === "urgent" ? "text-[#F84E00]" :
-            status.tone === "muted" ? "text-[#727272]" :
-            "text-[#BF72FF]"
-          }`}>
+          <p className={cn("t-caption font-semibold truncate",
+            status.tone === "urgent" ? "text-danger" :
+            status.tone === "muted" ? "text-ink-muted" :
+            "text-ink-2"
+          )}>
             {status.text}
           </p>
 
@@ -177,21 +183,21 @@ const SavedEventCard = ({ event, index = 0, onUnsave, usedImages, imageSrc }) =>
             disabled={!hasRegLink}
             title={hasRegLink ? "" : "Registration link coming soon"}
             data-testid={`saved-register-btn-${index}`}
-            className="mt-auto w-full inline-flex items-center justify-center gap-1 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-full px-3 py-2 text-[11px] font-bold transition-colors whitespace-nowrap"
+            className={cn(buttonVariants({ variant: "primary", size: "sm" }), "mt-auto w-full", "disabled:pointer-events-auto disabled:cursor-not-allowed")}
           >
-            Register <ChevronRight size={11} />
+            Register <ChevronRight size={16} strokeWidth={1.75} />
           </button>
         </div>
       </Link>
 
       {confirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" data-testid="saved-unsave-confirm">
-          <div className="bg-[#18002C] border border-[#46176D] rounded-2xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-white">Remove from saved list?</h3>
-            <p className="mt-1 text-sm text-[#727272]">You can save this event again later.</p>
-            <div className="mt-5 flex gap-3">
-              <button onClick={() => setConfirmOpen(false)} data-testid="saved-unsave-cancel" className="flex-1 bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] rounded-full px-4 py-2.5 text-sm font-bold transition-colors">Cancel</button>
-              <button onClick={confirmRemove} data-testid="saved-unsave-confirm-btn" className="flex-1 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-4 py-2.5 text-sm font-bold transition-colors">Yes, Remove</button>
+        <div className="fixed inset-0 z-40 bg-scrim/60 flex items-center justify-center p-4" data-testid="saved-unsave-confirm">
+          <div className="relative z-50 bg-surface border border-line rounded-lg p-6 max-w-sm w-full shadow-elev-2">
+            <h3 className="t-h3 text-ink">Remove from saved list?</h3>
+            <p className="mt-1 t-body text-ink-2">You can save this event again later.</p>
+            <div className="mt-4 flex gap-3">
+              <button onClick={() => setConfirmOpen(false)} data-testid="saved-unsave-cancel" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "flex-1")}>Cancel</button>
+              <button onClick={confirmRemove} data-testid="saved-unsave-confirm-btn" className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "flex-1")}>Yes, Remove</button>
             </div>
           </div>
         </div>
@@ -247,7 +253,7 @@ const Profile = () => {
   }, [user, loading]);
 
   if (!loading && !user) { return null; }
-  if (!user) return <div className="min-h-screen bg-[#0D0D0D]"/>;
+  if (!user) return <div className="min-h-screen bg-canvas"/>;
 
   const removeSaved = (id) => setSaved((prev) => prev.filter((e) => e.event_id !== id));
 
@@ -263,24 +269,24 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-32 md:pb-16">
+    <div className="min-h-screen bg-canvas pb-16">
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-8">
         {/* 1. User Details */}
-        <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6" data-testid="profile-card">
+        <div className="bg-surface border border-line rounded-lg p-6" data-testid="profile-card">
           <div className="flex items-center gap-4">
             {user.picture ? (
-              <img src={user.picture} alt={user.name} className="w-16 h-16 rounded-full border-2 border-[#46176D]" />
+              <img src={user.picture} alt={user.name} className="h-16 w-16 rounded-full border-2 border-line" />
             ) : (
-              <div className="w-16 h-16 rounded-full bg-[#46176D] flex items-center justify-center text-white text-2xl font-black">{user.name?.[0]?.toUpperCase() || "U"}</div>
+              <div className="h-16 w-16 rounded-full bg-raised flex items-center justify-center text-ink t-h2">{user.name?.[0]?.toUpperCase() || "U"}</div>
             )}
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">{user.name}</h1>
-              <span className="inline-block mt-1 bg-[#280049] text-[#BF72FF] rounded-lg px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest">{user.role || "attendee"}</span>
+              <h1 className="t-h1 text-ink">{user.name}</h1>
+              <span className="mt-1 inline-flex h-6 items-center rounded-md border border-line bg-chip px-2 t-caption font-bold text-ink">{user.role || "attendee"}</span>
             </div>
           </div>
 
-          <div className="mt-6 space-y-3 text-sm">
+          <div className="mt-6 space-y-3">
             <Row testid="profile-email" Icon={Mail} label="Email" value={user.email || "—"}/>
             <Row testid="profile-phone" Icon={Phone} label="Phone" value={user.phone || "—"}/>
             <Row testid="profile-city" Icon={MapPin} label="City" value={user.city || "—"}/>
@@ -292,25 +298,25 @@ const Profile = () => {
 
         {/* Notifications Section */}
         <div className="space-y-3">
-          <h2 className="text-[16px] font-bold text-white">Notifications</h2>
+          <h2 className="t-h3 text-ink">Notifications</h2>
           <div className="mx-[-1rem] sm:mx-[-1.5rem]">
             <WhatsAppReminderBar />
           </div>
         </div>
 
         {/* 2. Saved Events — horizontal scroll of compact cards */}
-        <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6" data-testid="profile-saved-section">
+        <div className="bg-surface border border-line rounded-lg p-6" data-testid="profile-saved-section">
           <div className="flex items-center gap-2 mb-4">
-            <Bookmark className="text-[#F84E00]" size={18}/>
-            <h2 className="text-xl font-black text-white tracking-tight">Saved Events</h2>
-            <span className="ml-auto text-xs text-[#727272]" data-testid="profile-saved-count">{saved.length}</span>
+            <Bookmark size={20} strokeWidth={1.75} className="text-ink-muted"/>
+            <h2 className="t-h2 text-ink">Saved Events</h2>
+            <span className="ml-auto t-caption text-ink-muted" data-testid="profile-saved-count">{saved.length}</span>
           </div>
 
           {saved.length === 0 ? (
             <div className="py-8 text-center" data-testid="profile-saved-empty">
-              <p className="text-white font-bold">No saved events yet</p>
-              <p className="text-xs text-[#727272] mt-1">Bookmark events from the home page to see them here.</p>
-              <Link to="/" data-testid="profile-browse-btn" className="inline-block mt-4 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-5 py-2.5 text-xs font-bold transition-colors">
+              <p className="t-body-strong text-ink">No saved events yet</p>
+              <p className="t-caption text-ink-muted mt-1">Bookmark events from the home page to see them here.</p>
+              <Link to="/" data-testid="profile-browse-btn" className={cn(buttonVariants({ variant: "primary", size: "sm" }), "mt-4")}>
                 Browse Events
               </Link>
             </div>
@@ -334,34 +340,34 @@ const Profile = () => {
         </div>
 
         {/* My Organized Events */}
-        <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6" data-testid="profile-organized-section">
+        <div className="bg-surface border border-line rounded-lg p-6" data-testid="profile-organized-section">
           <div className="flex items-center gap-2 mb-4">
-            <Megaphone className="text-[#F84E00]" size={18}/>
-            <h2 className="text-xl font-black text-white tracking-tight">My Organized Events</h2>
-            <Link to="/organizer" className="ml-auto text-xs font-bold uppercase tracking-widest text-[#BF72FF] hover:text-white transition-colors">
+            <Megaphone size={20} strokeWidth={1.75} className="text-ink-muted"/>
+            <h2 className="t-h2 text-ink">My Organized Events</h2>
+            <Link to="/organizer" className="ml-auto t-caption font-bold text-cta-text hover:underline transition-colors duration-fast ease-standard">
               + Submit New
             </Link>
           </div>
           {myEvents.length === 0 ? (
             <div className="py-8 text-center" data-testid="profile-organized-empty">
-              <p className="text-white font-bold">No events submitted yet</p>
-              <p className="text-xs text-[#727272] mt-1">Hosting something? List it and track its review status here.</p>
+              <p className="t-body-strong text-ink">No events submitted yet</p>
+              <p className="t-caption text-ink-muted mt-1">Hosting something? List it and track its review status here.</p>
             </div>
           ) : (
             <div className="space-y-3" data-testid="profile-organized-list">
               {myEvents.map((s) => (
-                <div key={s.submission_id} className="bg-[#0D0D0D] border border-[#46176D]/30 rounded-xl p-4">
+                <div key={s.submission_id} className="bg-canvas border border-line rounded-lg p-4">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <span className="text-sm font-bold text-white">{s.title}</span>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest border rounded-full px-3 py-1 ${
-                      s.status === "pending" ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
-                      : s.status === "approved" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
-                      : "bg-red-400/10 text-red-400 border-red-400/30"
-                    }`}>
+                    <span className="t-body-strong text-ink">{s.title}</span>
+                    <span className={cn("inline-flex h-6 items-center rounded-full border px-2 t-caption font-bold",
+                      s.status === "pending" ? "bg-raised text-ink-2 border-line-input"
+                      : s.status === "approved" ? "bg-ok-bg text-ok border-ok"
+                      : "bg-danger-bg text-danger border-danger"
+                    )}>
                       {s.status}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 text-[11px] text-[#727272] font-mono">
+                  <div className="flex items-center gap-2 mt-2 t-caption text-ink-muted font-mono">
                     {s.submission_id}
                     <button
                       type="button"
@@ -369,22 +375,22 @@ const Profile = () => {
                         try { await navigator.clipboard.writeText(s.submission_id); toast.success("Submission ID copied"); }
                         catch { toast.error("Failed to copy"); }
                       }}
-                      className="text-[#BF72FF] hover:text-white transition-colors"
+                      className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-raised hover:text-ink transition-colors duration-fast ease-standard"
                       aria-label="Copy submission ID"
                     >
-                      <Copy size={12} />
+                      <Copy size={16} strokeWidth={1.75} />
                     </button>
                   </div>
                   {s.status === "approved" && s.created_event_id && (
-                    <Link to={`/event/${s.created_event_id}`} className="mt-2 inline-block text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <Link to={`/event/${s.created_event_id}`} className="mt-2 inline-block t-caption font-bold text-ok hover:underline transition-colors duration-fast ease-standard">
                       View live event →
                     </Link>
                   )}
                   {s.status === "rejected" && s.reject_reason && (
-                    <p className="mt-2 text-xs text-[#727272]">Reason: <span className="text-white/90">{s.reject_reason}</span></p>
+                    <p className="mt-2 t-caption text-ink-muted">Reason: <span className="text-ink">{s.reject_reason}</span></p>
                   )}
                   {s.admin_note && (
-                    <p className="mt-2 text-xs text-[#BF72FF]">Note from Clann team: <span className="text-white/90">{s.admin_note}</span></p>
+                    <p className="mt-2 t-caption text-ink-2">Note from Clann team: <span className="text-ink">{s.admin_note}</span></p>
                   )}
                 </div>
               ))}
@@ -393,45 +399,45 @@ const Profile = () => {
         </div>
 
         {/* 3. Feedback */}
-        <div className="bg-[#18002C] border border-[#46176D]/30 rounded-2xl p-6" data-testid="feedback-section">
-          <h2 className="text-xl font-black text-white tracking-tight">How's your Clann experience?</h2>
-          <p className="mt-1 text-sm text-[#727272]">Your feedback helps us improve. Takes less than a minute.</p>
+        <div className="bg-surface border border-line rounded-lg p-6" data-testid="feedback-section">
+          <h2 className="t-h2 text-ink">How's your Clann experience?</h2>
+          <p className="mt-1 t-body text-ink-muted">Your feedback helps us improve. Takes less than a minute.</p>
 
           {sent ? (
-            <div data-testid="feedback-success" className="mt-6 bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-5 text-center">
-              <p className="text-white font-bold">Thank you! Your feedback means a lot to us. 🙏</p>
-              <button onClick={() => setSent(false)} className="mt-3 text-xs text-[#BF72FF] hover:text-white transition-colors underline">Share more feedback</button>
+            <div data-testid="feedback-success" className="mt-6 bg-ok-bg border border-ok rounded-lg p-4 text-center">
+              <p className="t-body-strong text-ink">Thank you! Your feedback means a lot to us. 🙏</p>
+              <button onClick={() => setSent(false)} className="mt-3 t-caption font-bold text-cta-text underline transition-colors duration-fast ease-standard">Share more feedback</button>
             </div>
           ) : (
             <>
-              <div className="mt-5 flex gap-2" data-testid="star-rating">
+              <div className="mt-4 flex gap-2" data-testid="star-rating">
                 {[1,2,3,4,5].map((n) => (
                   <button
                     key={n}
                     data-testid={`star-${n}`}
                     onClick={() => setRating(n)}
-                    className="p-1 transition-transform hover:scale-110"
+                    className="flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-fast ease-standard hover:bg-raised"
                     aria-label={`${n} stars`}
                   >
-                    <Star size={28} className={n <= rating ? "text-[#F84E00]" : "text-[#46176D]"} fill={n <= rating ? "currentColor" : "none"}/>
+                    <Star size={28} strokeWidth={1.75} className={n <= rating ? "text-cta" : "text-line-input"} fill={n <= rating ? "currentColor" : "none"}/>
                   </button>
                 ))}
               </div>
-              <textarea
+              <Textarea
                 data-testid="feedback-text"
                 rows={4}
                 maxLength={MAX}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Tell us what you love, what's missing, or what we can do better..."
-                className="mt-4 w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-3 text-sm text-white placeholder-[#727272] outline-none resize-y transition-colors"
+                className="mt-4 resize-y"
               />
-              <div className="mt-1 text-right text-[11px] text-[#727272]" data-testid="feedback-counter">{text.length} / {MAX}</div>
+              <div className="mt-1 text-right t-caption text-ink-muted" data-testid="feedback-counter">{text.length} / {MAX}</div>
               <button
                 data-testid="feedback-submit"
                 onClick={submitFeedback}
                 disabled={busy}
-                className="mt-3 w-full bg-[#F84E00] hover:bg-[#D14200] disabled:opacity-60 text-white rounded-full px-5 py-3 font-bold text-sm transition-colors"
+                className={cn(buttonVariants({ variant: "primary", size: "md" }), "mt-3 w-full")}
               >
                 {busy ? "Sending..." : "Send Feedback"}
               </button>
@@ -444,9 +450,9 @@ const Profile = () => {
           <button
             data-testid="profile-logout"
             onClick={async () => { await logout(); navigate("/"); }}
-            className="w-full bg-[#280049] hover:bg-[#46176D] text-white rounded-full px-5 py-3.5 font-bold text-sm inline-flex items-center justify-center gap-2 transition-colors border border-[#46176D]/60"
+            className={cn(buttonVariants({ variant: "secondary", size: "md" }), "w-full")}
           >
-            <LogOut size={16}/> Logout
+            <LogOut size={16} strokeWidth={1.75}/> Logout
           </button>
         </div>
       </div>
@@ -456,11 +462,11 @@ const Profile = () => {
 };
 
 const Row = ({ Icon, label, value, testid }) => (
-  <div data-testid={testid} className="flex items-center gap-3 bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#46176D]/30">
-    <Icon size={14} className="text-[#BF72FF]"/>
+  <div data-testid={testid} className="flex items-center gap-3 bg-canvas rounded-lg px-4 py-3 border border-line">
+    <Icon size={16} strokeWidth={1.75} className="text-ink-muted"/>
     <div className="flex-1">
-      <div className="text-[10px] uppercase tracking-widest font-bold text-[#BF72FF]">{label}</div>
-      <div className="text-white break-all">{value}</div>
+      <div className="t-caption font-bold text-ink-muted">{label}</div>
+      <div className="t-body text-ink break-all">{value}</div>
     </div>
   </div>
 );

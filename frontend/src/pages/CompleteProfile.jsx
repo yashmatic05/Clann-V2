@@ -5,6 +5,12 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import ThemeToggle from "@/components/ThemeToggle";
+import { PartyPopper } from "lucide-react";
+import FormField from "@/components/ui/form-field";
+import { Input } from "@/components/ui/input";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const CITIES = ["Delhi", "Mumbai", "Bangalore", "Pune", "Other"];
 const EVENT_TYPES = ["Workshops", "Meetups", "Hackathons", "Conferences", "Walks", "Art & Sketch"];
@@ -44,16 +50,24 @@ const CompleteProfile = () => {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#0D0D0D] flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center bg-[#18002C] rounded-2xl p-8 border border-[#46176D]/30">
-          <div className="text-4xl mb-3">🎉</div>
-          <h1 data-testid="signup-success" className="text-2xl font-black text-white tracking-tight">Welcome to Clann!</h1>
-          <p className="mt-2 text-sm text-[#727272]">
+      <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
+        {/* No Navbar on this page, so the theme switch is pinned to the viewport
+            (16px from the top and right edges). Renders nothing while
+            ENABLE_LIGHT_MODE is false — see src/lib/theme.js. */}
+        <div className="fixed top-4 right-4 z-20">
+          <ThemeToggle />
+        </div>
+        <div className="max-w-md w-full text-center bg-surface rounded-lg p-8 border border-line">
+          {/* R7 bans emoji in interface chrome, so the celebration glyph becomes
+              the equivalent lucide line icon. The words around it are unchanged. */}
+          <PartyPopper size={32} strokeWidth={1.75} className="mx-auto mb-3 text-ok" aria-hidden="true" />
+          <h1 data-testid="signup-success" className="t-h1 text-ink">Welcome to Clann!</h1>
+          <p className="mt-2 t-body text-ink-muted">
             {role === "organizer"
               ? "Your account has been created. Our team will review your organizer profile and get in touch shortly."
               : "Your account has been created. Discover events near you."}
           </p>
-          <button data-testid="go-home" onClick={() => navigate("/")} className="mt-6 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-6 py-3 font-bold text-sm transition-colors">
+          <button data-testid="go-home" onClick={() => navigate("/")} className={cn(buttonVariants({ variant: "primary", size: "md" }), "mt-6")}>
             Explore Events
           </button>
         </div>
@@ -62,25 +76,41 @@ const CompleteProfile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] py-10 px-4">
-      <div className="max-w-md mx-auto bg-[#18002C] rounded-2xl p-6 border border-[#46176D]/30">
-        <h1 className="text-2xl font-black text-white tracking-tight">Complete Your Profile</h1>
-        <p className="mt-1 text-sm text-[#727272]">Just a few more details so we can personalize your feed.</p>
+    <div className="min-h-screen bg-canvas py-12 px-4">
+      {/* No Navbar on this page, so the theme switch is pinned to the viewport
+          (16px from the top and right edges). Renders nothing while
+          ENABLE_LIGHT_MODE is false — see src/lib/theme.js. */}
+      <div className="fixed top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
+      <div className="max-w-md mx-auto bg-surface rounded-lg p-6 border border-line">
+        <h1 className="t-h1 text-ink">Complete Your Profile</h1>
+        <p className="mt-1 t-body text-ink-muted">Just a few more details so we can personalize your feed.</p>
 
         <div className="mt-6 space-y-4">
           <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">I am a</label>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+            <span className="t-label text-ink-2 block mb-2">I am a</span>
+            <div className="grid grid-cols-2 gap-2">
               {["attendee", "organizer"].map((r) => (
-                <button key={r} data-testid={`role-${r}`} onClick={() => setRole(r)} className={`rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider border transition-colors ${role === r ? "bg-[#F84E00] text-white border-[#F84E00]" : "bg-[#280049] text-[#BF72FF] border-transparent hover:border-[#46176D]"}`}>{r}</button>
+                <button
+                  key={r}
+                  data-testid={`role-${r}`}
+                  onClick={() => setRole(r)}
+                  aria-pressed={role === r}
+                  className={cn(
+                    "inline-flex min-h-11 items-center justify-center rounded-full border px-4 t-label font-bold uppercase tracking-wider transition-colors duration-fast ease-standard",
+                    role === r
+                      ? "border-selected bg-selected text-on-selected"
+                      : "border-line bg-raised text-ink-2 hover:border-line-input hover:text-ink"
+                  )}
+                >{r}</button>
               ))}
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Mobile Number *</label>
-            <div className="mt-2 flex items-stretch bg-[#0D0D0D] border border-[#46176D]/40 focus-within:border-[#F84E00] rounded-lg overflow-hidden transition-colors">
-              <span className="px-3 flex items-center bg-[#280049] text-[#BF72FF] text-sm font-bold border-r border-[#46176D]/40">+91</span>
+          <FormField label="Mobile Number" required>
+            <div className="flex items-stretch bg-surface border border-line-input hover:border-ink-2 focus-within:border-ink rounded-md overflow-hidden transition-colors duration-fast ease-standard">
+              <span className="px-3 flex items-center bg-raised text-ink-2 t-body-strong border-r border-line-input">+91</span>
               <input
                 data-testid="profile-phone"
                 type="tel"
@@ -90,58 +120,66 @@ const CompleteProfile = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
                 placeholder="98765 43210"
-                className="flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none"
+                className="h-11 flex-1 bg-transparent px-4 text-base md:text-sm text-ink placeholder:text-ink-muted"
               />
             </div>
-          </div>
+          </FormField>
 
-          <div className="bg-[#0D0D0D] rounded-lg border border-[#46176D]/40 p-4">
+          <div className="bg-canvas rounded-lg border border-line p-4">
             <div className="flex items-center justify-between gap-4">
-              <label className="text-sm text-white font-medium flex-1">Enable WhatsApp reminders for events I save or register for</label>
+              <label htmlFor="profile-whatsapp" className="t-body-strong text-ink flex-1">Enable WhatsApp reminders for events I save or register for</label>
               <Switch
+                id="profile-whatsapp"
                 data-testid="profile-whatsapp"
                 checked={whatsappOn}
                 onCheckedChange={setWhatsappOn}
-                className="data-[state=checked]:bg-[#F84E00]"
               />
             </div>
-            <p className="mt-2 text-[11px] text-[#727272]">We'll send you a reminder 24 hours before your saved events. You can turn this off anytime.</p>
+            <p className="mt-2 t-caption text-ink-muted">We'll send you a reminder 24 hours before your saved events. You can turn this off anytime.</p>
           </div>
 
-          <div>
-            <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">City</label>
+          <FormField label="City">
             <Select value={city} onValueChange={setCity}>
-              <SelectTrigger data-testid="profile-city" className="mt-2 bg-[#0D0D0D] border-[#46176D]/40 text-white">
+              <SelectTrigger data-testid="profile-city">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#18002C] border-[#46176D] text-white">
-                {CITIES.map((c) => <SelectItem key={c} value={c} className="focus:bg-[#280049] focus:text-white">{c}</SelectItem>)}
+              <SelectContent>
+                {CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
 
           {role === "organizer" && (
             <>
+              <FormField label="Organisation Name">
+                <Input data-testid="profile-org" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+              </FormField>
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Organisation Name</label>
-                <input data-testid="profile-org" value={orgName} onChange={(e) => setOrgName(e.target.value)} className="mt-2 w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white outline-none" />
-              </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Type of Events You Organize</label>
-                <div className="mt-2 flex flex-wrap gap-2">
+                <span className="t-label text-ink-2 block mb-2">Type of Events You Organize</span>
+                <div className="flex flex-wrap gap-2">
                   {EVENT_TYPES.map((t) => (
-                    <button key={t} data-testid={`type-${t.toLowerCase().replace(/\s|&/g, '-')}`} onClick={() => toggleType(t)} className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors ${types.includes(t) ? "bg-[#F84E00] text-white border-[#F84E00]" : "bg-[#280049] text-[#BF72FF] border-transparent hover:border-[#46176D]"}`}>{t}</button>
+                    <button
+                      key={t}
+                      data-testid={`type-${t.toLowerCase().replace(/\s|&/g, '-')}`}
+                      onClick={() => toggleType(t)}
+                      aria-pressed={types.includes(t)}
+                      className={cn(
+                        "inline-flex min-h-9 items-center justify-center rounded-full border px-3 t-caption font-bold uppercase tracking-wider transition-colors duration-fast ease-standard",
+                        types.includes(t)
+                          ? "border-selected bg-selected text-on-selected"
+                          : "border-line bg-raised text-ink-2 hover:border-line-input hover:text-ink"
+                      )}
+                    >{t}</button>
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Instagram (optional)</label>
-                <input data-testid="profile-instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@yourhandle" className="mt-2 w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white outline-none" />
-              </div>
+              <FormField label="Instagram (optional)">
+                <Input data-testid="profile-instagram" value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@yourhandle" />
+              </FormField>
             </>
           )}
 
-          <button data-testid="profile-submit" onClick={submit} className="w-full bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-5 py-3 font-bold text-sm transition-colors">
+          <button data-testid="profile-submit" onClick={submit} className={cn(buttonVariants({ variant: "primary", size: "md" }), "w-full")}>
             Create Account
           </button>
         </div>

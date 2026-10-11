@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import CompactEventCard from "@/components/CompactEventCard";
 
-// Section heading: white bold 18px title left, orange "See All →" right
+// Section heading: .t-h3 title in the ink token on the left, and the
+// "See All →" text link in the cta-text token on the right (R3, R8).
 const SectionHeading = ({ title }) => {
   const navigate = useNavigate();
 
@@ -28,10 +29,10 @@ const SectionHeading = ({ title }) => {
 
   return (
     <div className="flex items-center justify-between">
-      <h2 className="text-lg font-bold text-white tracking-tight">{title}</h2>
+      <h2 className="t-h3 text-ink">{title}</h2>
       <span
         onClick={handleSeeAll}
-        className="text-xs font-bold text-[#F84E00] cursor-pointer"
+        className="t-caption font-bold text-cta-text cursor-pointer hover:underline"
       >
         See All →
       </span>

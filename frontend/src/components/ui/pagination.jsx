@@ -38,7 +38,7 @@ const PaginationLink = ({
   <a
     aria-current={isActive ? "page" : undefined}
     className={cn(buttonVariants({
-      variant: isActive ? "outline" : "ghost",
+      variant: isActive ? "secondary" : "tertiary",
       size,
     }), className)}
     {...props} />
@@ -51,10 +51,10 @@ const PaginationPrevious = ({
 }) => (
   <PaginationLink
     aria-label="Go to previous page"
-    size="default"
-    className={cn("gap-1 pl-2.5", className)}
+    size="md"
+    className={cn("gap-1 pl-2", className)}
     {...props}>
-    <ChevronLeft className="h-4 w-4" />
+    <ChevronLeft size={16} strokeWidth={1.75} />
     <span>Previous</span>
   </PaginationLink>
 )
@@ -66,11 +66,11 @@ const PaginationNext = ({
 }) => (
   <PaginationLink
     aria-label="Go to next page"
-    size="default"
-    className={cn("gap-1 pr-2.5", className)}
+    size="md"
+    className={cn("gap-1 pr-2", className)}
     {...props}>
     <span>Next</span>
-    <ChevronRight className="h-4 w-4" />
+    <ChevronRight size={16} strokeWidth={1.75} />
   </PaginationLink>
 )
 PaginationNext.displayName = "PaginationNext"
@@ -81,9 +81,9 @@ const PaginationEllipsis = ({
 }) => (
   <span
     aria-hidden
-    className={cn("flex h-9 w-9 items-center justify-center", className)}
+    className={cn("flex h-11 w-11 items-center justify-center", className)}
     {...props}>
-    <MoreHorizontal className="h-4 w-4" />
+    <MoreHorizontal size={16} strokeWidth={1.75} />
     <span className="sr-only">More pages</span>
   </span>
 )

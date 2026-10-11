@@ -7,17 +7,26 @@ import { MapPin, Calendar, ChevronLeft } from "lucide-react";
 import { registrationStatus } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
 import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
+/**
+ * Category chips are uniform (R2) — same decision as EventCard and
+ * CompactEventCard: no hex codes, no palette names, one accent per card.
+ */
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
-  if (c.includes("workshop")) return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-  if (c.includes("hackathon")) return "bg-orange-500/15 text-orange-300 border-orange-400/40";
-  if (c.includes("meetup")) return "bg-teal-500/15 text-teal-300 border-teal-400/40";
-  if (c.includes("conference")) return "bg-blue-500/15 text-blue-300 border-blue-400/40";
-  if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
-  if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
-  return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+  if (c.includes("workshop")) return "bg-chip text-ink border-line";
+  if (c.includes("hackathon")) return "bg-chip text-ink border-line";
+  if (c.includes("meetup")) return "bg-chip text-ink border-line";
+  if (c.includes("conference")) return "bg-chip text-ink border-line";
+  if (c.includes("walk")) return "bg-chip text-ink border-line";
+  if (c.includes("art")) return "bg-chip text-ink border-line";
+  return "bg-chip text-ink border-line";
 };
+
+const chipClass =
+  "inline-flex h-6 shrink-0 items-center rounded-md border px-1 t-caption font-semibold whitespace-nowrap";
 
 const RelatedEventCard = ({ event, usedImages, imageSrc }) => {
   const navigate = useNavigate();
@@ -26,38 +35,38 @@ const RelatedEventCard = ({ event, usedImages, imageSrc }) => {
   return (
     <div
       onClick={() => navigate(`/event/${event.event_id}`)}
-      className="w-full h-[300px] bg-[#18002C] border border-[#46176D]/30 rounded-[12px] overflow-hidden cursor-pointer flex flex-col"
+      className="w-full h-[300px] bg-surface border border-line hover:border-line-input rounded-lg overflow-hidden cursor-pointer flex flex-col transition-colors duration-fast ease-standard"
     >
-      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-[#280049]" />
-      <div className="p-[10px] flex flex-col gap-[6px] overflow-hidden flex-1">
+      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-raised" />
+      <div className="p-2 flex flex-col gap-1 overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
-          <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+          <span className={`${chipClass} ${categoryColor(event.category)}`}>
             {event.category}
           </span>
         </div>
 
         {/* Row 2 */}
-        <h4 className="text-[12px] font-bold text-white line-clamp-2 leading-tight">
+        <h4 className="t-caption font-bold text-ink line-clamp-2">
           {event.title}
         </h4>
 
         {/* Row 3 */}
-        <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
-          <MapPin size={10} className="shrink-0 text-[#BF72FF]" />
+        <p className="flex items-center gap-1 t-caption text-ink-2 truncate">
+          <MapPin size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted" />
           <span className="truncate">
             {event.city}{event.location ? ` | ${event.location.split(",")[0]}` : ""}
           </span>
         </p>
 
         {/* Row 4 */}
-        <p className="flex items-center gap-1 text-[10px] text-[#727272] truncate">
-          <Calendar size={10} className="shrink-0 text-[#BF72FF]" />
+        <p className="flex items-center gap-1 t-caption text-ink-2 truncate">
+          <Calendar size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted" />
           <span>{formatEventDateShort(event.event_date)}</span>
         </p>
 
         {/* Row 5 */}
-        <p className={`text-[10px] font-semibold truncate ${status.tone === "urgent" ? "text-[#F84E00]" : "text-[#727272]"}`}>
+        <p className={cn("t-caption font-semibold truncate", status.tone === "urgent" ? "text-danger" : "text-ink-muted")}>
           {status.text}
         </p>
 
@@ -71,7 +80,7 @@ const RelatedEventCard = ({ event, usedImages, imageSrc }) => {
               window.open(event.external_link, "_blank", "noopener,noreferrer");
             }
           }}
-          className="mt-auto w-full h-[28px] bg-[#F84E00] text-white text-[11px] rounded-[20px] font-bold"
+          className={cn(buttonVariants({ variant: "primary", size: "sm" }), "mt-auto w-full")}
         >
           Register
         </button>
@@ -139,19 +148,19 @@ const EventsListPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24">
+    <div className="min-h-screen bg-canvas pb-16">
       <Navbar />
       <div className="max-w-3xl mx-auto px-4 pt-6">
         {/* Back button */}
         <button
           onClick={() => navigate("/")}
-          className="inline-flex items-center gap-1 text-[#BF72FF] hover:text-white text-sm mb-6 transition-colors"
+          className="inline-flex items-center gap-1 t-body text-ink-2 hover:text-ink mb-6 transition-colors duration-fast ease-standard"
         >
-          <ChevronLeft size={16} /> Back
+          <ChevronLeft size={16} strokeWidth={1.75} /> Back
         </button>
 
         {/* Title */}
-        <h1 className="text-[28px] font-bold text-white mb-6 leading-tight">
+        <h1 className="t-h1 text-ink mb-6">
           {getPageTitle()}
         </h1>
 
@@ -161,16 +170,16 @@ const EventsListPage = () => {
             {[...Array(6)].map((_, i) => (
               <div
                 key={`skeleton-${i}`}
-                className="h-[300px] bg-[#18002C] rounded-xl animate-pulse"
+                className="h-[300px] bg-raised rounded-lg animate-pulse"
               />
             ))}
           </div>
         ) : events.length === 0 ? (
-          <div className="py-20 text-center text-[#727272]">
-            <p className="text-lg font-bold text-white mb-2">No events found</p>
+          <div className="py-16 text-center text-ink-muted">
+            <p className="t-h3 text-ink mb-2">No events found</p>
             <button
               onClick={() => navigate("/")}
-              className="mt-4 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-6 py-2.5 text-xs font-bold transition-colors"
+              className={cn(buttonVariants({ variant: "primary", size: "sm" }), "mt-4")}
             >
               Browse Events
             </button>

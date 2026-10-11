@@ -8,6 +8,8 @@ import EventCard from "@/components/EventCard";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import { assignEventImages } from "@/lib/image-fallback";
 import { Bookmark } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const Saved = () => {
   const navigate = useNavigate();
@@ -38,24 +40,24 @@ const Saved = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] pb-24 md:pb-10">
+    <div className="min-h-screen bg-canvas pb-16 md:pb-8">
       <Navbar />
       <WhatsAppReminderBar testid="whatsapp-bar-saved" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <h1 className="text-3xl font-black tracking-tight text-white flex items-center gap-2">
-          <Bookmark className="text-[#F84E00]"/> Saved Events
+        <h1 className="t-h1 text-ink flex items-center gap-2">
+          <Bookmark size={24} strokeWidth={1.75} className="text-ink-muted"/> Saved Events
         </h1>
-        <p className="text-sm text-[#727272] mt-1">Events you've bookmarked to attend later.</p>
+        <p className="t-body text-ink-muted mt-1">Events you've bookmarked to attend later.</p>
 
         {ready && events.length === 0 ? (
           <div className="mt-16 text-center" data-testid="saved-empty">
-            <div className="mx-auto w-20 h-20 rounded-full bg-[#18002C] border border-[#46176D]/40 flex items-center justify-center mb-4">
-              <Bookmark size={28} className="text-[#BF72FF]"/>
+            <div className="mx-auto h-20 w-20 rounded-full bg-surface border border-line flex items-center justify-center mb-4">
+              <Bookmark size={28} strokeWidth={1.75} className="text-ink-muted"/>
             </div>
-            <p className="text-white font-bold text-lg mb-1">No saved events yet</p>
-            <p className="text-sm text-[#727272]">Discover something interesting.</p>
-            <Link to="/" data-testid="browse-events-btn" className="inline-block mt-5 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-6 py-3 text-sm font-bold transition-colors">
+            <p className="t-h3 text-ink mb-1">No saved events yet</p>
+            <p className="t-body text-ink-muted">Discover something interesting.</p>
+            <Link to="/" data-testid="browse-events-btn" className={cn(buttonVariants({ variant: "primary", size: "md" }), "mt-4")}>
               Browse Events
             </Link>
           </div>

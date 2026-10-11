@@ -20,9 +20,109 @@
         <meta name="twitter:title" content="Clann — Explore More. Upskill More." />
         <meta name="twitter:description" content="Discover workshops, meetups, hackathons, and conferences curated for students and young professionals." />
         <meta name="twitter:image" content="https://clann.netlify.app/brand/clann-logo.png" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
+        <!--
+        The Inter Google Fonts <link> (and its two preconnects) were removed:
+        nothing in src/ references Inter — the product font is Satoshi, loaded
+        from Fontshare at the top of src/index.css. See DESIGN_SYSTEM.md R3.
+        -->
+        <script>
+            /* -------------------------------------------------------------
+               Clann theme bootstrap — DESIGN_SYSTEM.md Part 1b.
+               Runs before React so the very first paint already carries the
+               correct theme class (no light/dark flash). It mirrors
+               frontend/src/lib/theme.js and must stay in sync with it.
+               Wrapped in try/catch: a theme failure must never block render.
+               ------------------------------------------------------------- */
+            (function () {
+                /* LIGHT_ENABLED MUST match ENABLE_LIGHT_MODE in
+                   frontend/src/lib/theme.js — this script runs before React and
+                   is what prevents a light/dark flash on first paint. Both were
+                   flipped to true in Part 5 of the design-system rollout.
+
+                   FALLBACK_THEME is deliberately NOT the same value as
+                   DEFAULT_THEME in theme.js: there "system" is handed to
+                   next-themes, which can resolve it; here it is the last-resort
+                   argument to apply(), which needs a concrete scheme. Both end
+                   up at light when the OS states no preference. */
+                var LIGHT_ENABLED = true;
+                var STORAGE_KEY = "clann-theme";
+                var PREVIEW_KEY = "clann-preview-theme";
+                var FALLBACK_THEME = "light";
+                var DARK_ONLY_THEME = "dark";
+
+                function apply(theme) {
+                    var root = document.documentElement;
+                    if (theme === "dark") {
+                        root.classList.add("dark");
+                    } else {
+                        root.classList.remove("dark");
+                    }
+                    root.style.colorScheme = theme;
+                }
+
+                function readPreview() {
+                    var preview = new URLSearchParams(window.location.search).get(
+                        "previewTheme",
+                    );
+                    if (preview === "light" || preview === "dark") {
+                        try {
+                            window.sessionStorage.setItem(PREVIEW_KEY, preview);
+                        } catch (writeErr) {
+                            /* storage blocked — the URL value still applies */
+                        }
+                        return preview;
+                    }
+                    try {
+                        var stored = window.sessionStorage.getItem(PREVIEW_KEY);
+                        if (stored === "light" || stored === "dark") return stored;
+                    } catch (readErr) {
+                        /* storage blocked — fall through to the default */
+                    }
+                    return null;
+                }
+
+                function readStored() {
+                    try {
+                        var stored = window.localStorage.getItem(STORAGE_KEY);
+                        if (stored === "light" || stored === "dark") return stored;
+                    } catch (readErr) {
+                        /* storage blocked — fall through to the system theme */
+                    }
+                    return null;
+                }
+
+                try {
+                    /* A reviewer-supplied ?previewTheme=light|dark wins over
+                       everything and is remembered for this tab only, so a
+                       forced theme survives client-side navigation without
+                       touching the visitor's stored choice. Kept after the
+                       Part 5 flip because it is still the only way to force a
+                       theme for screenshots and QA. */
+                    var theme = readPreview();
+
+                    if (!theme) {
+                        if (!LIGHT_ENABLED) {
+                            /* Escape hatch: dark only, as shipped in Parts 1-4. */
+                            theme = DARK_ONLY_THEME;
+                        } else {
+                            /* An explicit choice wins; otherwise follow the
+                               system, light when the OS gives no preference. */
+                            var prefersDark =
+                                window.matchMedia &&
+                                window.matchMedia("(prefers-color-scheme: dark)").matches;
+                            theme = readStored() || (prefersDark ? "dark" : "light");
+                        }
+                    }
+                    apply(theme);
+                } catch (err) {
+                    try {
+                        apply(FALLBACK_THEME);
+                    } catch (fatal) {
+                        /* nothing left to do */
+                    }
+                }
+            })();
+        </script>
         <!--
         manifest.json provides metadata used when your web app is installed on a
         user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/

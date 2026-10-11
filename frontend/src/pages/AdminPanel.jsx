@@ -2,12 +2,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, Star, LogOut, Calendar, Users, TicketCheck, MessageSquare, Upload, FileSpreadsheet, Download, Wand2, Loader2, ClipboardList, Check, X } from "lucide-react";
+import { Plus, Edit2, Trash2, Star, LogOut, Calendar, Users, TicketCheck, MessageSquare, Upload, FileSpreadsheet, Download, Wand2, Loader2, ClipboardList, Check, X, Clock } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import * as XLSX from "xlsx";
+import ThemedLogo from "@/components/ThemedLogo";
+import ThemeToggle from "@/components/ThemeToggle";
+import FormField from "@/components/ui/form-field";
+import { Input, fieldBaseClassNames } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const CATEGORIES = ["Workshop", "Meetup", "Hackathon", "Conference", "Walk", "Art & Sketch"];
 const CITIES = ["Delhi", "Mumbai", "Bangalore", "Pune", "Other"];
@@ -693,18 +700,23 @@ const AdminPanel = () => {
 
   return (
     <>
-    <div className="min-h-screen bg-[#0D0D0D]">
-      <header className="sticky top-0 z-30 bg-[#0D0D0D]/80 backdrop-blur-xl border-b border-[#280049]">
+    <div className="min-h-screen bg-canvas">
+      <header className="sticky top-0 z-30 bg-canvas border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/brand/clann-logo.png" alt="Clann" className="h-8 w-auto" />
+            <ThemedLogo className="h-8 w-auto shrink-0" />
             <div>
-              <div className="text-[10px] text-[#BF72FF] font-bold uppercase tracking-widest">Admin Console</div>
+              <div className="t-label text-ink-2 font-bold uppercase">Admin Console</div>
             </div>
           </div>
-          <button data-testid="admin-logout" onClick={logout} className="text-sm text-[#BF72FF] hover:text-white inline-flex items-center gap-1.5 transition-colors">
-            <LogOut size={14}/> Logout
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Theme switch — immediately left of Logout. Renders nothing while
+                ENABLE_LIGHT_MODE is false (see src/lib/theme.js). */}
+            <ThemeToggle />
+            <button data-testid="admin-logout" onClick={logout} className="t-body text-cta-text hover:underline inline-flex items-center gap-2 transition-colors duration-fast ease-standard">
+              <LogOut size={16} strokeWidth={1.75}/> Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -717,15 +729,15 @@ const AdminPanel = () => {
 
         <div className="mt-8">
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="bg-[#18002C] border border-[#46176D]/40 rounded-full p-1 mb-4">
-              <TabsTrigger data-testid="admin-tab-events" value="events" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">Events</TabsTrigger>
-              <TabsTrigger data-testid="admin-tab-feedback" value="feedback" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
-                <MessageSquare size={12} className="mr-1.5"/> Feedback ({feedback.length})
+            <TabsList className="mb-4 w-full">
+              <TabsTrigger data-testid="admin-tab-events" value="events">Events</TabsTrigger>
+              <TabsTrigger data-testid="admin-tab-feedback" value="feedback">
+                <MessageSquare size={16} strokeWidth={1.75}/> Feedback ({feedback.length})
               </TabsTrigger>
-              <TabsTrigger data-testid="admin-tab-submissions" value="submissions" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
-                <ClipboardList size={12} className="mr-1.5"/> Submissions ({submissions.filter((s) => s.status === "pending").length})
+              <TabsTrigger data-testid="admin-tab-submissions" value="submissions">
+                <ClipboardList size={16} strokeWidth={1.75}/> Submissions ({submissions.filter((s) => s.status === "pending").length})
               </TabsTrigger>
-              <TabsTrigger data-testid="admin-tab-categories" value="categories" className="rounded-full data-[state=active]:bg-[#F84E00] data-[state=active]:text-white text-[#BF72FF] font-bold text-xs uppercase tracking-widest px-4">
+              <TabsTrigger data-testid="admin-tab-categories" value="categories">
                 Manage Categories ({homepageCategories.length})
               </TabsTrigger>
             </TabsList>
@@ -737,23 +749,23 @@ const AdminPanel = () => {
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={onDrop}
-                className={`mb-6 rounded-2xl border-2 border-dashed p-6 transition-colors ${dragOver ? "border-[#F84E00] bg-[#F84E00]/5" : "border-[#46176D]/50 bg-[#18002C]"}`}
+                className={cn("mb-6 rounded-lg border-2 border-dashed p-6 transition-colors duration-fast ease-standard", dragOver ? "border-focus bg-raised" : "border-line bg-surface")}
               >
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#BF72FF] shrink-0">
-                    <FileSpreadsheet size={22} />
+                  <div className="h-12 w-12 rounded-md bg-raised border border-line flex items-center justify-center text-ink-muted shrink-0">
+                    <FileSpreadsheet size={24} strokeWidth={1.75} />
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <h3 className="text-white font-bold">Bulk import events</h3>
-                    <p className="text-xs text-[#727272] mt-0.5">
-                      Drag & drop an <span className="text-[#BF72FF] font-semibold">.xlsx</span> or <span className="text-[#BF72FF] font-semibold">.csv</span> file — every row becomes a new event card. Required columns: title, external_link, event_date. <span className="text-[#BF72FF] font-semibold">image_url is optional</span> — rows without a real event image get an automatic fallback image.
+                    <h3 className="t-body-strong text-ink">Bulk import events</h3>
+                    <p className="t-caption text-ink-muted mt-1">
+                      Drag & drop an <span className="text-ink-2 font-semibold">.xlsx</span> or <span className="text-ink-2 font-semibold">.csv</span> file — every row becomes a new event card. Required columns: title, external_link, event_date. <span className="text-ink-2 font-semibold">image_url is optional</span> — rows without a real event image get an automatic fallback image.
                     </p>
                     {uploadStats && (
-                      <p className="mt-2 text-[11px]" data-testid="bulk-stats">
-                        <span className="text-emerald-400 font-bold">{uploadStats.ok} imported</span>
-                        {uploadStats.duplicate_count > 0 && <span className="text-amber-400 font-bold ml-2">· {uploadStats.duplicate_count} duplicates skipped</span>}
-                        {uploadStats.failed > 0 && <span className="text-red-400 font-bold ml-2">· {uploadStats.failed} failed</span>}
-                        <span className="text-[#727272] ml-2">of {uploadStats.total} rows</span>
+                      <p className="mt-2 t-caption" data-testid="bulk-stats">
+                        <span className="text-ok font-bold">{uploadStats.ok} imported</span>
+                        {uploadStats.duplicate_count > 0 && <span className="text-ink-2 font-bold ml-2">· {uploadStats.duplicate_count} duplicates skipped</span>}
+                        {uploadStats.failed > 0 && <span className="text-danger font-bold ml-2">· {uploadStats.failed} failed</span>}
+                        <span className="text-ink-muted ml-2">of {uploadStats.total} rows</span>
                       </p>
                     )}
                   </div>
@@ -761,17 +773,17 @@ const AdminPanel = () => {
                     <button
                       data-testid="bulk-template-btn"
                       onClick={downloadTemplate}
-                      className="inline-flex items-center gap-1.5 border border-[#46176D] text-[#BF72FF] hover:bg-[#280049] hover:text-white rounded-full px-4 py-2 text-xs font-bold transition-colors"
+                      className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
                     >
-                      <Download size={13}/> Template
+                      <Download size={16} strokeWidth={1.75}/> Template
                     </button>
                     <button
                       data-testid="bulk-choose-btn"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={uploading}
-                      className="inline-flex items-center gap-1.5 bg-[#F84E00] hover:bg-[#D14200] disabled:opacity-60 text-white rounded-full px-4 py-2 text-xs font-bold transition-colors"
+                      className={cn(buttonVariants({ variant: "secondary", size: "sm" }))}
                     >
-                      <Upload size={13}/> {uploading ? "Importing..." : "Choose file"}
+                      <Upload size={16} strokeWidth={1.75}/> {uploading ? "Importing..." : "Choose file"}
                     </button>
                     <input
                       ref={fileInputRef}
@@ -788,16 +800,16 @@ const AdminPanel = () => {
               {/* Export all events — admin-only, complete database */}
               <div
                 data-testid="export-section"
-                className="mb-6 rounded-2xl border border-[#46176D]/40 bg-[#18002C] p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                className="mb-6 rounded-lg border border-line bg-surface p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
               >
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#280049] border border-[#46176D]/60 flex items-center justify-center text-[#BF72FF] shrink-0">
-                    <Download size={18} />
+                  <div className="h-10 w-10 rounded-md bg-raised border border-line flex items-center justify-center text-ink-muted shrink-0">
+                    <Download size={20} strokeWidth={1.75} />
                   </div>
                   <div>
-                    <h3 className="text-white font-bold text-sm">Export all events</h3>
-                    <p className="text-xs text-[#727272] mt-1">Download your complete event database as a single spreadsheet.</p>
-                    <p className="text-[10px] text-[#727272] mt-1">Includes all events in the database — not just the current view.</p>
+                    <h3 className="t-body-strong text-ink">Export all events</h3>
+                    <p className="t-caption text-ink-muted mt-1">Download your complete event database as a single spreadsheet.</p>
+                    <p className="t-caption text-ink-muted mt-1">Includes all events in the database — not just the current view.</p>
                   </div>
                 </div>
                 <div className="flex gap-2 shrink-0 self-stretch md:self-auto">
@@ -805,46 +817,46 @@ const AdminPanel = () => {
                     data-testid="export-excel-btn"
                     onClick={handleExportExcel}
                     disabled={!!exporting}
-                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-white hover:bg-[#FFFBE9] disabled:opacity-60 text-[#0D0D0D] rounded-full px-5 py-2.5 text-xs font-bold transition-colors"
+                    className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "flex-1 md:flex-none")}
                   >
-                    {exporting === "excel" ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />}
+                    {exporting === "excel" ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin" /> : <FileSpreadsheet size={16} strokeWidth={1.75} />}
                     {exporting === "excel" ? "Exporting..." : "Export Excel"}
                   </button>
                   <button
                     data-testid="export-csv-btn"
                     onClick={handleExportCSV}
                     disabled={!!exporting}
-                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 border border-[#46176D] text-[#BF72FF] hover:bg-[#280049] hover:text-white disabled:opacity-60 rounded-full px-5 py-2.5 text-xs font-bold transition-colors"
+                    className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "flex-1 md:flex-none")}
                   >
-                    {exporting === "csv" ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                    {exporting === "csv" ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin" /> : <Download size={16} strokeWidth={1.75} />}
                     {exporting === "csv" ? "Exporting..." : "Export CSV"}
                   </button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-black text-white tracking-tight">Events</h2>
+                <h2 className="t-h1 text-ink">Events</h2>
                 <div className="flex items-center gap-2">
                   <button
                     data-testid="delete-all-events-btn"
                     onClick={removeAll}
                     disabled={deletingAll || events.length === 0}
                     title="Delete all events"
-                    className="border border-red-500/50 text-red-400 hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed rounded-full px-5 py-2.5 text-sm font-bold inline-flex items-center gap-1.5 transition-colors"
+                    className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "disabled:pointer-events-auto disabled:cursor-not-allowed")}
                   >
-                    {deletingAll ? <Loader2 size={14} className="animate-spin"/> : <Trash2 size={14}/>}
+                    {deletingAll ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin"/> : <Trash2 size={16} strokeWidth={1.75}/>}
                     {deletingAll ? "Deleting..." : "Delete All"}
                   </button>
-                  <button data-testid="add-event-btn" onClick={openAdd} className="bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-5 py-2.5 text-sm font-bold inline-flex items-center gap-1.5 transition-colors">
-                    <Plus size={14}/> Add New Event
+                  <button data-testid="add-event-btn" onClick={openAdd} className={cn(buttonVariants({ variant: "primary", size: "sm" }))}>
+                    <Plus size={16} strokeWidth={1.75}/> Add New Event
                   </button>
                 </div>
               </div>
 
-              <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden">
+              <div className="bg-surface border border-line rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm" data-testid="events-table">
-                    <thead className="bg-[#280049] text-[#BF72FF] uppercase tracking-widest text-[10px]">
+                  <table className="w-full t-body" data-testid="events-table">
+                    <thead className="bg-raised text-ink-muted t-label uppercase">
                       <tr>
                         <th className="text-left px-4 py-3">Title</th>
                         <th className="text-left px-4 py-3">Category</th>
@@ -854,27 +866,27 @@ const AdminPanel = () => {
                         <th className="text-right px-4 py-3">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#46176D]/30">
+                    <tbody className="divide-y divide-line">
                       {events.map((ev) => (
-                        <tr key={ev.event_id} className="hover:bg-[#280049]/40 transition-colors" data-testid={`row-${ev.event_id}`}>
-                          <td className="px-4 py-3 text-white font-medium">{ev.title}</td>
-                          <td className="px-4 py-3 text-[#BF72FF]">{ev.category}</td>
-                          <td className="px-4 py-3 text-white/80">{ev.event_date}</td>
+                        <tr key={ev.event_id} className="hover:bg-raised transition-colors duration-fast ease-standard" data-testid={`row-${ev.event_id}`}>
+                          <td className="px-4 py-3 t-body-strong text-ink">{ev.title}</td>
+                          <td className="px-4 py-3 t-body text-ink-2">{ev.category}</td>
+                          <td className="px-4 py-3 t-body text-ink-2">{ev.event_date}</td>
                           <td className="px-4 py-3">
-                            <button onClick={() => toggleFeatured(ev)} className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest transition-colors ${ev.featured ? "bg-[#F84E00] text-white" : "bg-[#280049] text-[#BF72FF]"}`}>
-                              <Star size={10} fill={ev.featured ? "currentColor" : "none"}/>
+                            <button onClick={() => toggleFeatured(ev)} className={cn("inline-flex h-6 items-center gap-1 rounded-full border px-2 t-caption font-bold uppercase transition-colors duration-fast ease-standard", ev.featured ? "border-selected bg-selected text-on-selected" : "border-line bg-chip text-ink")}>
+                              <Star size={16} strokeWidth={1.75} fill={ev.featured ? "currentColor" : "none"}/>
                               {ev.featured ? "Yes" : "No"}
                             </button>
                           </td>
-                          <td className="px-4 py-3 text-white/80">{ev.seats_left}/{ev.total_seats}</td>
+                          <td className="px-4 py-3 t-body text-ink-2">{ev.seats_left}/{ev.total_seats}</td>
                           <td className="px-4 py-3 text-right">
-                            <button onClick={() => openEdit(ev)} className="text-[#BF72FF] hover:text-white p-1.5 mr-1 transition-colors" data-testid={`edit-${ev.event_id}`}><Edit2 size={14}/></button>
-                            <button onClick={() => remove(ev.event_id)} className="text-red-400 hover:text-red-300 p-1.5 transition-colors" data-testid={`delete-${ev.event_id}`}><Trash2 size={14}/></button>
+                            <button onClick={() => openEdit(ev)} className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-raised hover:text-ink transition-colors duration-fast ease-standard mr-1" data-testid={`edit-${ev.event_id}`}><Edit2 size={16} strokeWidth={1.75}/></button>
+                            <button onClick={() => remove(ev.event_id)} className="flex h-8 w-8 items-center justify-center rounded-full text-danger hover:bg-danger-bg transition-colors duration-fast ease-standard" data-testid={`delete-${ev.event_id}`}><Trash2 size={16} strokeWidth={1.75}/></button>
                           </td>
                         </tr>
                       ))}
                       {events.length === 0 && (
-                        <tr><td colSpan="6" className="text-center py-10 text-[#727272]">No events yet. Add your first event.</td></tr>
+                        <tr><td colSpan="6" className="text-center py-12 t-caption text-ink-muted">No events yet. Add your first event.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -883,11 +895,11 @@ const AdminPanel = () => {
             </TabsContent>
 
             <TabsContent value="feedback">
-              <h2 className="text-2xl font-black text-white tracking-tight mb-4">User Feedback</h2>
-              <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden">
+              <h2 className="t-h1 text-ink mb-4">User Feedback</h2>
+              <div className="bg-surface border border-line rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm" data-testid="feedback-table">
-                    <thead className="bg-[#280049] text-[#BF72FF] uppercase tracking-widest text-[10px]">
+                  <table className="w-full t-body" data-testid="feedback-table">
+                    <thead className="bg-raised text-ink-muted t-label uppercase">
                       <tr>
                         <th className="text-left px-4 py-3">User</th>
                         <th className="text-left px-4 py-3">Rating</th>
@@ -895,29 +907,29 @@ const AdminPanel = () => {
                         <th className="text-left px-4 py-3">Submitted</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#46176D]/30">
+                    <tbody className="divide-y divide-line">
                       {feedback.map((f) => (
-                        <tr key={f.feedback_id} data-testid={`feedback-row-${f.feedback_id}`} className="hover:bg-[#280049]/40 transition-colors">
-                          <td className="px-4 py-3 text-white font-medium align-top whitespace-nowrap">
+                        <tr key={f.feedback_id} data-testid={`feedback-row-${f.feedback_id}`} className="hover:bg-raised transition-colors duration-fast ease-standard">
+                          <td className="px-4 py-3 t-body-strong text-ink align-top whitespace-nowrap">
                             {f.user_name || f.user_email}
-                            <div className="text-[10px] text-[#727272] font-normal">{f.user_email}</div>
+                            <div className="t-caption text-ink-muted font-normal">{f.user_email}</div>
                           </td>
                           <td className="px-4 py-3 align-top whitespace-nowrap">
-                            <span className="inline-flex items-center gap-0.5 text-[#F84E00]">
+                            <span className="inline-flex items-center gap-1 text-cta-text">
                               {[...Array(5)].map((_, i) => (
-                                <Star key={`fb-${f.feedback_id}-star-${i}`} size={12} fill={i < f.star_rating ? "currentColor" : "none"} className={i < f.star_rating ? "" : "text-[#46176D]"}/>
+                                <Star key={`fb-${f.feedback_id}-star-${i}`} size={16} strokeWidth={1.75} fill={i < f.star_rating ? "currentColor" : "none"} className={i < f.star_rating ? "" : "text-line-input"}/>
                               ))}
-                              <span className="ml-1 text-xs text-white">{f.star_rating}/5</span>
+                              <span className="ml-1 t-caption text-ink">{f.star_rating}/5</span>
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-white/90 max-w-md align-top">{f.feedback_text || <span className="text-[#727272] italic">—</span>}</td>
-                          <td className="px-4 py-3 text-white/70 text-xs whitespace-nowrap align-top">
+                          <td className="px-4 py-3 t-body text-ink max-w-md align-top">{f.feedback_text || <span className="text-ink-muted italic">—</span>}</td>
+                          <td className="px-4 py-3 t-caption text-ink-muted whitespace-nowrap align-top">
                             {f.submitted_at ? new Date(f.submitted_at).toLocaleString() : "—"}
                           </td>
                         </tr>
                       ))}
                       {feedback.length === 0 && (
-                        <tr><td colSpan="4" className="text-center py-10 text-[#727272]">No feedback submitted yet.</td></tr>
+                        <tr><td colSpan="4" className="text-center py-12 t-caption text-ink-muted">No feedback submitted yet.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -927,16 +939,16 @@ const AdminPanel = () => {
 
             <TabsContent value="submissions">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <h2 className="text-2xl font-black text-white tracking-tight">Organizer Submissions</h2>
-                <div className="inline-flex bg-[#18002C] border border-[#46176D]/40 rounded-full p-1 w-fit" data-testid="submission-filters">
+                <h2 className="t-h1 text-ink">Organizer Submissions</h2>
+                <div className="inline-flex bg-raised border border-line rounded-full p-1 w-fit" data-testid="submission-filters">
                   {["pending", "approved", "rejected"].map((f) => (
                     <button
                       key={f}
                       data-testid={`sub-filter-${f}`}
                       onClick={() => setSubFilter(f)}
-                      className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-full transition-colors ${
-                        subFilter === f ? "bg-[#F84E00] text-white" : "text-[#BF72FF] hover:text-white"
-                      }`}
+                      className={cn("inline-flex min-h-9 items-center rounded-full px-4 t-label font-bold uppercase transition-colors duration-fast ease-standard",
+                        subFilter === f ? "bg-selected text-on-selected" : "text-ink-2 hover:bg-raised hover:text-ink"
+                      )}
                     >
                       {f} ({submissions.filter((s) => s.status === f).length})
                     </button>
@@ -945,15 +957,15 @@ const AdminPanel = () => {
               </div>
 
               {submissions.length === 0 ? (
-                <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-10 text-center">
-                  <ClipboardList size={28} className="mx-auto text-[#46176D] mb-2" />
-                  <p className="text-sm text-[#727272]">No submissions yet. Organizers can propose events via the public "List Your Event" page.</p>
+                <div className="bg-surface border border-line rounded-lg p-12 text-center">
+                  <ClipboardList size={24} strokeWidth={1.75} className="mx-auto text-line-input mb-2" />
+                  <p className="t-body text-ink-muted">No submissions yet. Organizers can propose events via the public "List Your Event" page.</p>
                 </div>
               ) : (
-                <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden">
+                <div className="bg-surface border border-line rounded-lg overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-sm" data-testid="submissions-table">
-                      <thead className="bg-[#280049] text-[#BF72FF] uppercase tracking-widest text-[10px]">
+                    <table className="w-full t-body" data-testid="submissions-table">
+                      <thead className="bg-raised text-ink-muted t-label uppercase">
                         <tr>
                           <th className="text-left px-4 py-3">Organizer</th>
                           <th className="text-left px-4 py-3">Event</th>
@@ -963,47 +975,50 @@ const AdminPanel = () => {
                           <th className="text-right px-4 py-3">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-[#46176D]/30">
+                      <tbody className="divide-y divide-line">
                         {submissions
                           .filter((s) => s.status === subFilter)
                           .map((s) => (
-                            <tr key={s.submission_id} data-testid={`submission-row-${s.submission_id}`} onClick={() => { setExpandedSubmission(s); setNoteDraft(s.admin_note || ""); }} className="hover:bg-[#280049]/40 transition-colors align-top cursor-pointer">
-                              <td className="px-4 py-3 text-white font-medium whitespace-nowrap">
+                            <tr key={s.submission_id} data-testid={`submission-row-${s.submission_id}`} onClick={() => { setExpandedSubmission(s); setNoteDraft(s.admin_note || ""); }} className="hover:bg-raised transition-colors duration-fast ease-standard align-top cursor-pointer">
+                              <td className="px-4 py-3 t-body-strong text-ink whitespace-nowrap">
                                 {s.organizer_name}
-                                <div className="text-[10px] text-[#727272] font-normal break-all">{s.organizer_email}</div>
-                                {s.organizer_phone && <div className="text-[10px] text-[#727272] font-normal">{s.organizer_phone}</div>}
+                                <div className="t-caption text-ink-muted font-normal break-all">{s.organizer_email}</div>
+                                {s.organizer_phone && <div className="t-caption text-ink-muted font-normal">{s.organizer_phone}</div>}
                               </td>
                               <td className="px-4 py-3 max-w-xs">
-                                <div className="text-white font-medium">{s.title}</div>
-                                <div className="text-[10px] text-[#BF72FF] uppercase tracking-widest font-bold mt-0.5">{s.category} · {s.mode}</div>
-                                {s.short_description && <div className="text-[11px] text-[#727272] mt-1 line-clamp-2">{s.short_description}</div>}
+                                <div className="t-body-strong text-ink">{s.title}</div>
+                                <div className="t-label text-ink-2 uppercase font-bold mt-1">{s.category} · {s.mode}</div>
+                                {s.short_description && <div className="t-caption text-ink-muted mt-1 line-clamp-2">{s.short_description}</div>}
                                 {s.created_event_id && (
                                   <Link
                                     to={`/event/${s.created_event_id}`}
-                                    className="inline-block mt-1.5 text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                                    className="inline-block mt-2 t-caption font-bold text-ok hover:underline transition-colors duration-fast ease-standard"
                                   >
                                     View live event →
                                   </Link>
                                 )}
                                 {s.status === "rejected" && s.reject_reason && (
-                                  <div className="text-[11px] text-red-300 mt-1">Reason: {s.reject_reason}</div>
+                                  <div className="t-caption text-danger mt-1">Reason: {s.reject_reason}</div>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-white/80 whitespace-nowrap">
+                              <td className="px-4 py-3 t-body text-ink-2 whitespace-nowrap">
                                 {s.event_date}
-                                <div className="text-[10px] text-[#727272]">{s.start_time} – {s.end_time}</div>
-                                {s.city && <div className="text-[10px] text-[#727272]">{s.city}</div>}
+                                <div className="t-caption text-ink-muted">{s.start_time} – {s.end_time}</div>
+                                {s.city && <div className="t-caption text-ink-muted">{s.city}</div>}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest border ${
-                                  s.status === "pending" ? "bg-amber-400/10 text-amber-400 border-amber-400/30"
-                                  : s.status === "approved" ? "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
-                                  : "bg-red-400/10 text-red-400 border-red-400/30"
-                                }`}>
+                                <span className={cn("inline-flex h-6 items-center gap-1 rounded-full border px-2 t-caption font-bold uppercase",
+                                  s.status === "pending" ? "bg-raised text-ink border-line-input"
+                                  : s.status === "approved" ? "bg-ok-bg text-ok border-ok"
+                                  : "bg-danger-bg text-danger border-danger"
+                                )}>
+                                  {s.status === "pending" ? <Clock size={16} strokeWidth={1.75} aria-hidden="true"/>
+                                    : s.status === "approved" ? <Check size={16} strokeWidth={1.75} aria-hidden="true"/>
+                                    : <X size={16} strokeWidth={1.75} aria-hidden="true"/>}
                                   {s.status}
                                 </span>
                               </td>
-                              <td className="px-4 py-3 text-white/70 text-xs whitespace-nowrap">
+                              <td className="px-4 py-3 t-caption text-ink-muted whitespace-nowrap">
                                 {s.submitted_at ? new Date(s.submitted_at).toLocaleString() : "—"}
                               </td>
                               <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -1013,18 +1028,18 @@ const AdminPanel = () => {
                                       onClick={(e) => { e.stopPropagation(); approveSubmission(s.submission_id); }}
                                       disabled={!!subAction}
                                       data-testid={`approve-${s.submission_id}`}
-                                      className="inline-flex items-center gap-1 bg-[#F84E00] hover:bg-[#D14200] disabled:opacity-60 text-white rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors mr-1.5"
+                                      className={cn(buttonVariants({ variant: "primary", size: "sm" }), "h-8 px-3 t-caption font-bold mr-2")}
                                     >
-                                      {subAction === s.submission_id ? <Loader2 size={11} className="animate-spin"/> : <Check size={11}/>}
-                                      Approve
+                                      {subAction === s.submission_id ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin"/> : <Check size={16} strokeWidth={1.75}/>}
+                                      Approve and publish
                                     </button>
                                     <button
                                       onClick={(e) => { e.stopPropagation(); rejectSubmission(s.submission_id); }}
                                       disabled={!!subAction}
                                       data-testid={`reject-${s.submission_id}`}
-                                      className="inline-flex items-center gap-1 border border-red-500/50 text-red-400 hover:bg-red-500/10 disabled:opacity-60 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-colors mr-1.5"
+                                      className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "h-8 px-3 t-caption font-bold mr-2")}
                                     >
-                                      <X size={11}/> Reject
+                                      <X size={16} strokeWidth={1.75}/> Reject with reason
                                     </button>
                                   </>
                                 )}
@@ -1032,15 +1047,15 @@ const AdminPanel = () => {
                                   onClick={(e) => { e.stopPropagation(); deleteSubmission(s.submission_id); }}
                                   data-testid={`delete-submission-${s.submission_id}`}
                                   title="Delete submission"
-                                  className="text-[#727272] hover:text-red-400 p-1.5 transition-colors"
+                                  className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-danger-bg hover:text-danger transition-colors duration-fast ease-standard"
                                 >
-                                  <Trash2 size={14}/>
+                                  <Trash2 size={16} strokeWidth={1.75}/>
                                 </button>
                               </td>
                             </tr>
                           ))}
                         {submissions.filter((s) => s.status === subFilter).length === 0 && (
-                          <tr><td colSpan="6" className="text-center py-10 text-[#727272]">No {subFilter} submissions.</td></tr>
+                          <tr><td colSpan="6" className="text-center py-12 t-caption text-ink-muted">No {subFilter} submissions.</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -1051,48 +1066,48 @@ const AdminPanel = () => {
 
             <TabsContent value="categories">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-black text-white tracking-tight">Manage Homepage Categories</h2>
+                <h2 className="t-h1 text-ink">Manage Homepage Categories</h2>
               </div>
-              <div className="bg-[#18002C] border border-[#46176D]/30 rounded-xl overflow-hidden p-6">
+              <div className="bg-surface border border-line rounded-lg overflow-hidden p-6">
                 {catLoading ? (
-                  <p className="text-sm text-[#BF72FF]">Loading categories...</p>
+                  <p className="t-body text-ink-2">Loading categories...</p>
                 ) : homepageCategories.length === 0 ? (
-                  <p className="text-sm text-[#727272]">No homepage categories found.</p>
+                  <p className="t-body text-ink-muted">No homepage categories found.</p>
                 ) : (
                   <div className="space-y-3" data-testid="categories-list">
                     {homepageCategories.map((c) => (
                       <div
                         key={c}
                         data-testid={`category-item-${c}`}
-                        className="flex items-center justify-between bg-[#280049]/40 border border-[#46176D]/30 rounded-lg p-3"
+                        className="flex items-center justify-between bg-raised border border-line rounded-lg p-3"
                       >
                         {editingCategory === c ? (
                           <div className="flex items-center gap-2 flex-1 mr-4">
-                            <input
+                            <Input
                               type="text"
                               data-testid={`category-input-${c}`}
                               value={editingCategoryName}
                               onChange={(e) => setEditingCategoryName(e.target.value)}
-                              className="bg-[#0D0D0D] border border-[#BF72FF] rounded px-3 py-1.5 text-sm text-white focus:outline-none w-full max-w-sm"
+                              className="h-9 max-w-sm"
                             />
                             <button
                               type="button"
                               data-testid={`category-save-${c}`}
                               onClick={() => saveCategoryRename(c)}
-                              className="bg-[#F84E00] text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider hover:bg-[#F84E00]/90 transition-colors"
+                              className={cn(buttonVariants({ variant: "primary", size: "sm" }), "h-8 px-3 t-caption font-bold")}
                             >
                               Save
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditingCategory(null)}
-                              className="bg-[#280049] text-[#BF72FF] px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wider hover:text-white transition-colors"
+                              className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-8 px-3 t-caption font-bold")}
                             >
                               Cancel
                             </button>
                           </div>
                         ) : (
-                          <span className="text-sm font-medium text-white">{c}</span>
+                          <span className="t-body-strong text-ink">{c}</span>
                         )}
 
                         <div className="flex items-center gap-2">
@@ -1101,20 +1116,20 @@ const AdminPanel = () => {
                               type="button"
                               data-testid={`category-edit-${c}`}
                               onClick={() => startEditCategory(c)}
-                              className="text-[#BF72FF] hover:text-white p-1.5 transition-colors"
+                              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-raised hover:text-ink transition-colors duration-fast ease-standard"
                               title="Edit Category"
                             >
-                              <Edit2 size={16} />
+                              <Edit2 size={16} strokeWidth={1.75} />
                             </button>
                           )}
                           <button
                             type="button"
                             data-testid={`category-delete-${c}`}
                             onClick={() => deleteCategory(c)}
-                            className="text-red-400 hover:text-red-300 p-1.5 transition-colors"
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-danger hover:bg-danger-bg transition-colors duration-fast ease-standard"
                             title="Delete Category"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={16} strokeWidth={1.75} />
                           </button>
                         </div>
                       </div>
@@ -1128,125 +1143,125 @@ const AdminPanel = () => {
       </main>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="bg-[#18002C] border-[#46176D]/50 text-white max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black tracking-tight">{editingId ? "Edit Event" : "Add New Event"}</DialogTitle>
+            <DialogTitle>{editingId ? "Edit Event" : "Add New Event"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <Field label="Event Title *"><input data-testid="form-title" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className={inputCls}/></Field>
+            <FormField label="Event Title" required><Input data-testid="form-title" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})}/></FormField>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Category">
+              <FormField label="Category">
                 <Select value={form.category} onValueChange={(v) => setForm({...form, category: v})}>
-                  <SelectTrigger data-testid="form-category" className="bg-[#0D0D0D] border-[#46176D]/40 text-white"><SelectValue/></SelectTrigger>
-                  <SelectContent className="bg-[#18002C] border-[#46176D] text-white">
-                    {CATEGORIES.map((c) => <SelectItem key={c} value={c} className="focus:bg-[#280049] focus:text-white">{c}</SelectItem>)}
+                  <SelectTrigger data-testid="form-category"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </Field>
-              <Field label="Mode">
+              </FormField>
+              <FormField label="Mode">
                 <Select value={form.mode} onValueChange={(v) => setForm({...form, mode: v})}>
-                  <SelectTrigger data-testid="form-mode" className="bg-[#0D0D0D] border-[#46176D]/40 text-white"><SelectValue/></SelectTrigger>
-                  <SelectContent className="bg-[#18002C] border-[#46176D] text-white">
-                    {MODES.map((m) => <SelectItem key={m} value={m} className="focus:bg-[#280049] focus:text-white">{m}</SelectItem>)}
+                  <SelectTrigger data-testid="form-mode"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {MODES.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </Field>
+              </FormField>
             </div>
-            <Field label="Short Description (150 chars, shown on card)">
-              <input data-testid="form-short" maxLength={150} value={form.short_description} onChange={(e) => setForm({...form, short_description: e.target.value})} className={inputCls}/>
-            </Field>
-            <Field label="Full Description">
-              <textarea data-testid="form-full" rows={4} value={form.full_description} onChange={(e) => setForm({...form, full_description: e.target.value})} className={`${inputCls} resize-y`}/>
-            </Field>
-            <Field label="Event Image URL (optional — leave blank for automatic fallback)">
-              <input
+            <FormField label="Short Description (150 chars, shown on card)">
+              <Input data-testid="form-short" maxLength={150} value={form.short_description} onChange={(e) => setForm({...form, short_description: e.target.value})}/>
+            </FormField>
+            <FormField label="Full Description">
+              <Textarea data-testid="form-full" rows={4} value={form.full_description} onChange={(e) => setForm({...form, full_description: e.target.value})} className="resize-y"/>
+            </FormField>
+            <FormField label="Event Image URL (optional — leave blank for automatic fallback)">
+              <Input
                 data-testid="form-image"
                 value={form.image_url}
                 onChange={(e) => setForm({...form, image_url: e.target.value})}
                 onBlur={(e) => checkImageOrientation(e.target.value)}
-                className={inputCls}
+               
               />
               {imageWarning && (
-                <p className="mt-1 text-[10px] text-[#727272]">This image looks square/portrait — event cards are horizontal, so it may get cropped tightly. A landscape (wide) image works best.</p>
+                <p className="mt-1 t-caption text-ink-muted">This image looks square/portrait — event cards are horizontal, so it may get cropped tightly. A landscape (wide) image works best.</p>
               )}
-            </Field>
+            </FormField>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Location"><input data-testid="form-location" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})} className={inputCls}/></Field>
-              <Field label="City">
+              <FormField label="Location"><Input data-testid="form-location" value={form.location} onChange={(e) => setForm({...form, location: e.target.value})}/></FormField>
+              <FormField label="City">
                 <Select value={form.city} onValueChange={(v) => setForm({...form, city: v})}>
-                  <SelectTrigger data-testid="form-city" className="bg-[#0D0D0D] border-[#46176D]/40 text-white"><SelectValue/></SelectTrigger>
-                  <SelectContent className="bg-[#18002C] border-[#46176D] text-white">
-                    {CITIES.map((c) => <SelectItem key={c} value={c} className="focus:bg-[#280049] focus:text-white">{c}</SelectItem>)}
+                  <SelectTrigger data-testid="form-city"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    {CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
-              </Field>
+              </FormField>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Event Date *"><input data-testid="form-date" type="date" value={form.event_date} onChange={(e) => setForm({...form, event_date: e.target.value})} className={inputCls}/></Field>
-              <Field label="Start Time"><input data-testid="form-start" type="time" value={form.start_time} onChange={(e) => setForm({...form, start_time: e.target.value})} className={inputCls}/></Field>
-              <Field label="End Time"><input data-testid="form-end" type="time" value={form.end_time} onChange={(e) => setForm({...form, end_time: e.target.value})} className={inputCls}/></Field>
+              <FormField label="Event Date" required><Input data-testid="form-date" type="date" value={form.event_date} onChange={(e) => setForm({...form, event_date: e.target.value})}/></FormField>
+              <FormField label="Start Time"><Input data-testid="form-start" type="time" value={form.start_time} onChange={(e) => setForm({...form, start_time: e.target.value})}/></FormField>
+              <FormField label="End Time"><Input data-testid="form-end" type="time" value={form.end_time} onChange={(e) => setForm({...form, end_time: e.target.value})}/></FormField>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Registration Deadline"><input data-testid="form-deadline" type="date" value={form.registration_deadline} onChange={(e) => setForm({...form, registration_deadline: e.target.value})} className={inputCls}/></Field>
-              <Field label="Total Seats"><input data-testid="form-seats" type="number" value={form.total_seats} onChange={(e) => setForm({...form, total_seats: e.target.value})} className={inputCls}/></Field>
+              <FormField label="Registration Deadline"><Input data-testid="form-deadline" type="date" value={form.registration_deadline} onChange={(e) => setForm({...form, registration_deadline: e.target.value})}/></FormField>
+              <FormField label="Total Seats"><Input data-testid="form-seats" type="number" value={form.total_seats} onChange={(e) => setForm({...form, total_seats: e.target.value})}/></FormField>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#46176D]/40">
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Paid Event</label>
-                <Switch data-testid="form-paid" checked={form.is_paid} onCheckedChange={(v) => setForm({...form, is_paid: v})} className="data-[state=checked]:bg-[#F84E00]"/>
+              <div className="flex items-center justify-between gap-4 bg-canvas rounded-lg px-4 py-3 border border-line">
+                <label className="t-label text-ink-2">Paid Event</label>
+                <Switch data-testid="form-paid" checked={form.is_paid} onCheckedChange={(v) => setForm({...form, is_paid: v})}/>
               </div>
               {form.is_paid && (
-                <Field label="Price"><input data-testid="form-price" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} placeholder="₹299" className={inputCls}/></Field>
+                <FormField label="Price"><Input data-testid="form-price" value={form.price} onChange={(e) => setForm({...form, price: e.target.value})} placeholder="₹299"/></FormField>
               )}
             </div>
-            <Field label="External Registration Link *"><input data-testid="form-link" value={form.external_link} onChange={(e) => setForm({...form, external_link: e.target.value})} placeholder="https://..." className={inputCls}/></Field>
+            <FormField label="External Registration Link" required><Input data-testid="form-link" value={form.external_link} onChange={(e) => setForm({...form, external_link: e.target.value})} placeholder="https://..."/></FormField>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Skills You Will Learn (comma separated)</label>
+                <label className="t-label text-ink-2">Skills You Will Learn (comma separated)</label>
                 <button
                   type="button"
                   data-testid="generate-tags-btn"
                   onClick={handleGenerateTags}
                   disabled={generatingTags}
-                  className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-[#BF72FF] hover:text-white border border-[#46176D]/60 hover:border-[#BF72FF] rounded-full px-2.5 py-1 transition-colors disabled:opacity-60"
+                  className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "h-8 px-3 t-caption font-bold")}
                 >
-                  {generatingTags ? <Loader2 size={11} className="animate-spin"/> : <Wand2 size={11}/>}
+                  {generatingTags ? <Loader2 size={16} strokeWidth={1.75} className="animate-spin"/> : <Wand2 size={16} strokeWidth={1.75}/>}
                   Auto Generate
                 </button>
               </div>
-              <input data-testid="form-skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="Graphic Design, Color Theory" className={inputCls}/>
+              <Input data-testid="form-skills" value={skillsInput} onChange={(e) => setSkillsInput(e.target.value)} placeholder="Graphic Design, Color Theory"/>
             </div>
             <div>
-              <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF]">Recommended For</label>
+              <label className="t-label text-ink-2">Recommended For</label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {AUDIENCE.map((a) => (
-                  <button key={a} data-testid={`aud-${a.toLowerCase()}`} onClick={() => toggleAudience(a)} className={`rounded-lg px-3 py-1.5 text-xs font-bold uppercase tracking-wider border transition-colors ${form.recommended_for.includes(a) ? "bg-[#F84E00] text-white border-[#F84E00]" : "bg-[#280049] text-[#BF72FF] border-transparent hover:border-[#46176D]"}`}>{a}</button>
+                  <button key={a} data-testid={`aud-${a.toLowerCase()}`} onClick={() => toggleAudience(a)} className={cn("inline-flex min-h-9 items-center rounded-full border px-3 t-caption font-bold uppercase tracking-wider transition-colors duration-fast ease-standard", form.recommended_for.includes(a) ? "border-selected bg-selected text-on-selected" : "border-line bg-raised text-ink-2 hover:border-line-input hover:text-ink")}>{a}</button>
                 ))}
               </div>
             </div>
-            <div className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#46176D]/40">
+            <div className="flex items-center justify-between gap-4 bg-canvas rounded-lg px-4 py-3 border border-line">
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block">Feature Event</label>
-                <span className="text-[10px] text-[#727272]">Show in hero banner carousel</span>
+                <label className="t-label text-ink-2 block">Feature Event</label>
+                <span className="t-caption text-ink-muted">Show in hero banner carousel</span>
               </div>
-              <Switch data-testid="form-featured" checked={form.featured} onCheckedChange={(v) => setForm({...form, featured: v})} className="data-[state=checked]:bg-[#F84E00]"/>
+              <Switch data-testid="form-featured" checked={form.featured} onCheckedChange={(v) => setForm({...form, featured: v})}/>
             </div>
 
-            <div className="bg-[#0D0D0D] rounded-lg p-4 border border-[#46176D]/40 space-y-3">
+            <div className="bg-canvas rounded-lg p-4 border border-line space-y-3">
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block">Homepage Display</label>
-                <span className="text-[10px] text-[#727272]">Choose how this event is displayed on the homepage</span>
+                <label className="t-label text-ink-2 block">Homepage Display</label>
+                <span className="t-caption text-ink-muted">Choose how this event is displayed on the homepage</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   data-testid="display-standard"
                   onClick={() => setDisplayType("standard")}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                  className={cn("inline-flex min-h-9 items-center rounded-full border px-3 t-label font-bold transition-colors duration-fast ease-standard",
                     displayType === "standard"
-                      ? "bg-[#F84E00] text-white border-[#F84E00]"
-                      : "bg-[#18002C] text-[#BF72FF] border-[#46176D]/40 hover:text-white"
-                  }`}
+                      ? "border-selected bg-selected text-on-selected"
+                      : "border-line bg-raised text-ink-2 hover:border-line-input hover:text-ink"
+                  )}
                 >
                   Standard Card
                 </button>
@@ -1254,11 +1269,11 @@ const AdminPanel = () => {
                   type="button"
                   data-testid="display-existing"
                   onClick={() => setDisplayType("existing")}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                  className={cn("inline-flex min-h-9 items-center rounded-full border px-3 t-label font-bold transition-colors duration-fast ease-standard",
                     displayType === "existing"
-                      ? "bg-[#F84E00] text-white border-[#F84E00]"
-                      : "bg-[#18002C] text-[#BF72FF] border-[#46176D]/40 hover:text-white"
-                  }`}
+                      ? "border-selected bg-selected text-on-selected"
+                      : "border-line bg-raised text-ink-2 hover:border-line-input hover:text-ink"
+                  )}
                 >
                   Add to Existing Category Section
                 </button>
@@ -1266,11 +1281,11 @@ const AdminPanel = () => {
                   type="button"
                   data-testid="display-new"
                   onClick={() => setDisplayType("new")}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-colors ${
+                  className={cn("inline-flex min-h-9 items-center rounded-full border px-3 t-label font-bold transition-colors duration-fast ease-standard",
                     displayType === "new"
-                      ? "bg-[#F84E00] text-white border-[#F84E00]"
-                      : "bg-[#18002C] text-[#BF72FF] border-[#46176D]/40 hover:text-white"
-                  }`}
+                      ? "border-selected bg-selected text-on-selected"
+                      : "border-line bg-raised text-ink-2 hover:border-line-input hover:text-ink"
+                  )}
                 >
                   Create New Category Section
                 </button>
@@ -1279,27 +1294,27 @@ const AdminPanel = () => {
               {displayType === "existing" && (
                 <div className="pt-2">
                   {catLoading ? (
-                    <p className="text-xs text-[#BF72FF]">Loading categories…</p>
+                    <p className="t-caption text-ink-2">Loading categories…</p>
                   ) : catError ? (
                     <div className="space-y-1">
-                      <p className="text-xs text-red-400">Failed to load categories. Enter category manually:</p>
-                      <input
+                      <p className="t-caption text-danger">Failed to load categories. Enter category manually:</p>
+                      <Input
                         type="text"
                         data-testid="manual-category-input"
                         placeholder="e.g. Art Walks"
                         value={manualCategory}
                         onChange={(e) => setManualCategory(e.target.value)}
-                        className="w-full bg-[#18002C] border border-[#46176D] rounded-lg px-3 py-2 text-sm text-white placeholder-[#727272] focus:outline-none focus:border-[#BF72FF]"
+                        
                       />
                     </div>
                   ) : homepageCategories.length === 0 ? (
-                    <p className="text-xs text-[#727272]">No existing categories found. Switch to "Create New Category Section" to add one.</p>
+                    <p className="t-caption text-ink-muted">No existing categories found. Switch to "Create New Category Section" to add one.</p>
                   ) : (
                     <select
                       data-testid="existing-category-select"
                       value={existingCategory}
                       onChange={(e) => setExistingCategory(e.target.value)}
-                      className="w-full bg-[#18002C] border border-[#46176D] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#BF72FF]"
+                      className={cn(fieldBaseClassNames, "h-11 px-4")}
                     >
                       <option value="">Select an existing category...</option>
                       {homepageCategories.map((c) => (
@@ -1314,32 +1329,32 @@ const AdminPanel = () => {
 
               {displayType === "new" && (
                 <div className="pt-2 space-y-1">
-                  <input
+                  <Input
                     type="text"
                     data-testid="new-category-input"
                     placeholder="Art Walks, Photography Events, College Fests"
                     value={newCategoryName}
                     onChange={(e) => setNewCategoryName(e.target.value)}
-                    className="w-full bg-[#18002C] border border-[#46176D] rounded-lg px-3 py-2 text-sm text-white placeholder-[#727272] focus:outline-none focus:border-[#BF72FF]"
+                    
                   />
-                  <p className="text-[10px] text-[#727272]">
+                  <p className="t-caption text-ink-muted">
                     This will create a new horizontal section on the homepage with this name. You can add more events to it later.
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between bg-[#0D0D0D] rounded-lg px-4 py-3 border border-[#46176D]/40">
+            <div className="flex items-center justify-between gap-4 bg-canvas rounded-lg px-4 py-3 border border-line">
               <div>
-                <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block">Government Event</label>
-                <span className="text-[10px] text-[#727272]">Also list under the Government Events section</span>
+                <label className="t-label text-ink-2 block">Government Event</label>
+                <span className="t-caption text-ink-muted">Also list under the Government Events section</span>
               </div>
-              <Switch data-testid="form-government" checked={!!form.is_government} onCheckedChange={(v) => setForm({...form, is_government: v})} className="data-[state=checked]:bg-[#F84E00]"/>
+              <Switch data-testid="form-government" checked={!!form.is_government} onCheckedChange={(v) => setForm({...form, is_government: v})}/>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button onClick={() => setOpen(false)} className="flex-1 bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] rounded-full px-5 py-3 text-sm font-bold transition-colors" data-testid="form-cancel">Cancel</button>
-              <button onClick={save} data-testid="form-publish" className="flex-1 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-5 py-3 text-sm font-bold transition-colors">
+              <button onClick={() => setOpen(false)} className={cn(buttonVariants({ variant: "secondary", size: "md" }), "flex-1")} data-testid="form-cancel">Cancel</button>
+              <button onClick={save} data-testid="form-publish" className={cn(buttonVariants({ variant: "primary", size: "md" }), "flex-1")}>
                 {editingId ? "Save Changes" : "Publish Event"}
               </button>
             </div>
@@ -1349,27 +1364,27 @@ const AdminPanel = () => {
     </div>
 
       {expandedSubmission && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setExpandedSubmission(null)}>
+        <div className="fixed inset-0 z-40 bg-scrim/60 flex items-center justify-center p-4" onClick={() => setExpandedSubmission(null)}>
           <div
-            className="bg-[#18002C] border border-[#46176D]/40 rounded-2xl p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+            className="relative z-50 bg-surface border border-line rounded-lg p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto shadow-elev-2"
             onClick={(e) => e.stopPropagation()}
             data-testid="submission-detail-modal"
           >
             <div className="flex items-start justify-between gap-4 mb-4">
-              <h2 className="text-xl font-black text-white">{expandedSubmission.title}</h2>
-              <button onClick={() => setExpandedSubmission(null)} className="text-[#727272] hover:text-white transition-colors" aria-label="Close">
-                <X size={20} />
+              <h2 className="t-h2 text-ink">{expandedSubmission.title}</h2>
+              <button onClick={() => setExpandedSubmission(null)} className="flex h-11 w-11 items-center justify-center rounded-full text-ink-muted hover:bg-raised hover:text-ink transition-colors duration-fast ease-standard" aria-label="Close">
+                <X size={20} strokeWidth={1.75} />
               </button>
             </div>
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3">
               <DetailRow label="Organizer" value={`${expandedSubmission.organizer_name} · ${expandedSubmission.organizer_email}${expandedSubmission.organizer_phone ? " · " + expandedSubmission.organizer_phone : ""}`} />
               <DetailRow label="Category / Mode" value={`${expandedSubmission.category} · ${expandedSubmission.mode}`} />
               <DetailRow label="Short Description" value={expandedSubmission.short_description} />
               <DetailRow label="Full Description" value={expandedSubmission.full_description || "—"} />
               {expandedSubmission.image_url && (
                 <div>
-                  <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold mb-1">Image</div>
-                  <img src={expandedSubmission.image_url} alt="" className="w-full max-h-48 object-cover rounded-lg border border-[#46176D]/40" />
+                  <div className="t-label uppercase text-ink-2 font-bold mb-1">Image</div>
+                  <img src={expandedSubmission.image_url} alt="" className="w-full max-h-48 object-cover rounded-md border border-line" />
                 </div>
               )}
               <DetailRow label="Location" value={`${expandedSubmission.location || "—"}, ${expandedSubmission.city || "—"}`} />
@@ -1380,21 +1395,22 @@ const AdminPanel = () => {
               <DetailRow label="Registration Link" value={expandedSubmission.external_link || "—"} />
               <DetailRow label="Notes from organizer" value={expandedSubmission.notes || "—"} />
             </div>
-            <div className="mt-5 pt-4 border-t border-[#46176D]/30">
-              <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block mb-2">Feedback / suggestion for organizer</label>
-              <textarea
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                rows={3}
-                placeholder="e.g. Please add a clearer event image before we can approve this."
-                className="w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors resize-y"
-              />
+            <div className="mt-4 pt-4 border-t border-line">
+              <FormField label="Feedback / suggestion for organizer">
+                <Textarea
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  rows={3}
+                  placeholder="e.g. Please add a clearer event image before we can approve this."
+                  className="resize-y"
+                />
+              </FormField>
               <button
                 onClick={() => saveNote(expandedSubmission.submission_id)}
                 disabled={noteSaving}
-                className="mt-2 bg-[#280049] hover:bg-[#46176D] disabled:opacity-60 text-white rounded-full px-4 py-2 text-xs font-bold transition-colors"
+                className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "mt-2")}
               >
-                {noteSaving ? "Saving…" : "Save Note"}
+                {noteSaving ? "Saving…" : "Save note for organizer"}
               </button>
             </div>
           </div>
@@ -1404,31 +1420,22 @@ const AdminPanel = () => {
   );
 };
 
-const inputCls = "w-full bg-[#0D0D0D] border border-[#46176D]/40 focus:border-[#F84E00] rounded-lg px-4 py-2.5 text-sm text-white placeholder-[#727272] outline-none transition-colors";
-
-const Field = ({ label, children }) => (
-  <div>
-    <label className="text-xs font-bold uppercase tracking-widest text-[#BF72FF] block mb-2">{label}</label>
-    {children}
-  </div>
-);
-
 const StatCard = ({ testid, label, value, Icon }) => (
-  <div data-testid={testid} className="bg-[#18002C] border border-[#46176D]/30 rounded-xl p-5 flex items-center gap-4">
-    <div className="w-12 h-12 rounded-xl bg-[#280049] flex items-center justify-center text-[#BF72FF]">
-      <Icon size={20}/>
+  <div data-testid={testid} className="bg-surface border border-line rounded-lg p-4 flex items-center gap-4">
+    <div className="h-12 w-12 rounded-md bg-raised flex items-center justify-center text-ink-muted">
+      <Icon size={24} strokeWidth={1.75}/>
     </div>
     <div>
-      <div className="text-3xl font-black text-white tracking-tight">{value}</div>
-      <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold">{label}</div>
+      <div className="t-h1 text-ink">{value}</div>
+      <div className="t-label uppercase text-ink-2 font-bold">{label}</div>
     </div>
   </div>
 );
 
 const DetailRow = ({ label, value }) => (
   <div>
-    <div className="text-[10px] uppercase tracking-widest text-[#BF72FF] font-bold mb-1">{label}</div>
-    <div className="text-white/90 whitespace-pre-wrap">{value}</div>
+    <div className="t-label uppercase text-ink-2 font-bold mb-1">{label}</div>
+    <div className="t-body text-ink whitespace-pre-wrap">{value}</div>
   </div>
 );
 

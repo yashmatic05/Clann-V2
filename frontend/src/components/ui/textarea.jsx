@@ -1,14 +1,17 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
+import { fieldBaseClassNames } from "@/components/ui/input"
 
+/**
+ * Textarea — DESIGN_SYSTEM.md R8 "Inputs".
+ * Shares `fieldBaseClassNames` with Input and Select so all three match;
+ * adds min-h-24 plus px-4 py-3.
+ */
 const Textarea = React.forwardRef(({ className, ...props }, ref) => {
   return (
     <textarea
-      className={cn(
-        "flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-        className
-      )}
+      className={cn(fieldBaseClassNames, "flex min-h-24 px-4 py-3", className)}
       ref={ref}
       {...props} />
   );

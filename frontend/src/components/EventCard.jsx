@@ -1,23 +1,42 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { MapPin, Calendar, Share2, Bookmark, ChevronRight } from "lucide-react";
+import { MapPin, Calendar, Share2, Bookmark, ChevronRight, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
 import { eventImageHandlers } from "@/lib/image-fallback";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
+/**
+ * Category chips are deliberately uniform (R2).
+ *
+ * The old implementation returned six different Tailwind palette colors
+ * (orange/teal/blue/emerald/pink + two raw hex purples) so categories could be
+ * told apart by hue. That breaks R2 twice over — components must never contain
+ * hex codes or palette names, and 60-30-10 allows exactly one accent (the cta
+ * orange) per card. Category is already spelled out as text inside the chip, so
+ * the hue carried no information that the label does not.
+ *
+ * The function keeps its original signature and call sites; every branch now
+ * returns the same token-based chip classes.
+ */
 const categoryColor = (cat) => {
   const c = (cat || "").toLowerCase();
-  if (c.includes("workshop")) return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
-  if (c.includes("hackathon")) return "bg-orange-500/15 text-orange-300 border-orange-400/40";
-  if (c.includes("meetup")) return "bg-teal-500/15 text-teal-300 border-teal-400/40";
-  if (c.includes("conference")) return "bg-blue-500/15 text-blue-300 border-blue-400/40";
-  if (c.includes("walk")) return "bg-emerald-500/15 text-emerald-300 border-emerald-400/40";
-  if (c.includes("art")) return "bg-pink-500/15 text-pink-300 border-pink-400/40";
-  return "bg-[#46176D]/60 text-[#BF72FF] border-[#BF72FF]/40";
+  if (c.includes("workshop")) return "bg-chip text-ink border-line";
+  if (c.includes("hackathon")) return "bg-chip text-ink border-line";
+  if (c.includes("meetup")) return "bg-chip text-ink border-line";
+  if (c.includes("conference")) return "bg-chip text-ink border-line";
+  if (c.includes("walk")) return "bg-chip text-ink border-line";
+  if (c.includes("art")) return "bg-chip text-ink border-line";
+  return "bg-chip text-ink border-line";
 };
+
+// Shared chip shape (R8 badges are h-6, on the 4px grid, sentence case per R3).
+const chipClass =
+  "inline-flex h-6 shrink-0 items-center rounded-md border px-2 t-caption font-semibold whitespace-nowrap";
 
 const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImages, imageSrc }) => {
   const { user } = useAuth();
@@ -98,94 +117,112 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImage
 
   return (
     <>
+      {/* R1/R5: a flat card — surface + a 1px line border, rounded-lg, no lift,
+          no drop shadow and no image zoom on hover. The only hover cue is the
+          border stepping from line to line-input. */}
       <Link
         to={`/event/${event.event_id}`}
         data-testid={`event-card-${index}`}
-        className={`group bg-[#18002C] rounded-xl overflow-hidden border border-[#46176D]/30 hover:border-[#46176D] hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(70,23,109,0.5)] transition-[transform,border-color,box-shadow,opacity] duration-300 flex flex-col ${removing ? "opacity-0 scale-95" : ""}`}
+        className={`group bg-surface rounded-lg overflow-hidden border border-line hover:border-line-input transition-[border-color,transform,opacity] duration-standard ease-standard flex flex-col ${removing ? "opacity-0 scale-95" : ""}`}
       >
         {/* Image — clean, only copy/save icons overlaid */}
-        <div className="relative aspect-video overflow-hidden bg-[#280049]">
+        <div className="relative aspect-video overflow-hidden bg-raised">
           <img
             {...eventImageHandlers(event, usedImages, imageSrc)}
             alt={event.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover"
             loading="lazy"
           />
+          {/* R1: flat, opaque chips — no frosted-glass effect and no translucent
+              black scrim. Surface/ink keeps them legible over any photograph in
+              both themes. R2: orange is never an icon-button hover. */}
           <div className="absolute top-3 right-3 flex gap-2">
             <button
               onClick={copyLink}
               data-testid={`share-btn-${index}`}
               aria-label="Copy link"
               title="Copy link"
-              className="p-2 rounded-full bg-black/50 backdrop-blur hover:bg-[#F84E00] text-white transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-surface text-ink transition-colors duration-fast ease-standard hover:bg-raised"
             >
-              <Share2 size={14} />
+              <Share2 size={16} strokeWidth={1.75} />
             </button>
             <button
               onClick={toggleSave}
               data-testid={`save-btn-${index}`}
               aria-label={saved ? "Remove from saved" : "Save event"}
-              className={`p-2 rounded-full backdrop-blur transition-colors ${saved ? "bg-[#F84E00] text-white" : "bg-black/50 hover:bg-[#46176D] text-white"}`}
+              className={cn(
+                "flex h-9 w-9 items-center justify-center rounded-full border transition-colors duration-fast ease-standard",
+                saved
+                  ? "border-selected bg-selected text-on-selected"
+                  : "border-line bg-surface text-ink hover:bg-raised"
+              )}
             >
-              <Bookmark size={14} fill={saved ? "currentColor" : "none"} />
+              <Bookmark size={16} strokeWidth={1.75} fill={saved ? "currentColor" : "none"} />
             </button>
           </div>
         </div>
 
-        <div className="p-4 md:p-5 flex-1 flex flex-col gap-2">
+        <div className="p-4 flex-1 flex flex-col gap-2">
           {/* 1. Tags row */}
-          <div className="flex items-center justify-between gap-1.5" data-testid={`card-tags-${index}`}>
-            <div className="flex items-center gap-1.5">
-              <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase whitespace-nowrap ${categoryColor(event.category)}`}>
+          <div className="flex items-center justify-between gap-2" data-testid={`card-tags-${index}`}>
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`${chipClass} ${categoryColor(event.category)}`}>
                 {event.category}
               </span>
-              <span className="rounded-md bg-[#280049] text-[#BF72FF] border border-[#46176D]/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+              <span className={`${chipClass} bg-raised text-ink-2 border-line`}>
                 {event.mode}
               </span>
             </div>
-            <span data-testid={`card-price-${index}`} className={`rounded-md px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap ${priceBadgeClass(event)}`}>
+            <span data-testid={`card-price-${index}`} className={`${chipClass} ${priceBadgeClass(event)}`}>
               {priceLabel(event)}
             </span>
           </div>
 
           {/* 2. Title */}
-          <h3 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug line-clamp-2">
+          <h3 className="t-h3 text-ink line-clamp-2">
             {event.title}
           </h3>
 
           {/* 3. Short description */}
-          <p className="text-xs text-[#727272] line-clamp-2">
+          <p className="t-caption text-ink-muted line-clamp-2">
             {event.short_description}
           </p>
 
           {/* 4. Location */}
-          <div className="flex items-center gap-1.5 text-xs text-white/80">
-            <MapPin size={12} className="text-[#BF72FF]"/>
+          <div className="flex items-center gap-2 t-caption text-ink-2">
+            <MapPin size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted"/>
             <span>{event.city}{event.location ? ` | ${event.location.split(",")[0]}` : ""}</span>
           </div>
 
           {/* 5. Calendar date */}
-          <div className="flex items-center gap-1.5 text-xs text-white/80">
-            <Calendar size={12} className="text-[#BF72FF]"/>
+          <div className="flex items-center gap-2 t-caption text-ink-2">
+            <Calendar size={16} strokeWidth={1.75} className="shrink-0 text-ink-muted"/>
             <span>{displayDate}</span>
           </div>
 
-          {/* 6. Registration status */}
-          <div data-testid={`card-status-${index}`} className={`text-[11px] font-semibold ${
-            status.tone === "urgent" ? "text-[#F84E00]" :
-            status.tone === "muted" ? "text-[#727272]" :
-            "text-[#BF72FF]"
-          }`}>
+          {/* 6. Registration status.
+              R2/R4: the card's only orange element is the Register button, so
+              urgency is carried by the danger token rather than by a second
+              shade of orange. */}
+          <div data-testid={`card-status-${index}`} className={cn("t-caption font-semibold",
+            status.tone === "urgent" ? "text-danger" :
+            status.tone === "muted" ? "text-ink-muted" :
+            "text-ink-2"
+          )}>
             {status.tone === "urgent" ? (
               <>
-                <span className="rocket-bounce inline-flex items-center gap-1">🚀</span>{" "}{status.text}
+                {/* R7: no emoji in chrome — the lucide Rocket replaces the 🚀
+                    glyph and keeps the existing rocket-bounce animation class.
+                    The emoji inside the share message are message content, not
+                    chrome, so they are untouched. */}
+                <span className="rocket-bounce inline-flex items-center gap-1"><Rocket size={16} strokeWidth={1.75} /></span>{" "}{status.text}
               </>
             ) : (
               status.text
             )}
           </div>
 
-          {/* CTAs */}
+          {/* CTAs — R4: exactly one primary (orange) action per card. */}
           <div className="mt-auto pt-3 grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -193,30 +230,38 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImage
               disabled={!hasRegLink}
               title={hasRegLink ? "" : "Registration link coming soon"}
               data-testid={`register-btn-${index}`}
-              className="inline-flex items-center justify-center gap-1 bg-[#F84E00] hover:bg-[#D14200] active:bg-[#C63E00] disabled:bg-[#2C2C2C] disabled:text-[#727272] disabled:cursor-not-allowed text-white rounded-full px-3 py-2.5 text-xs sm:text-sm font-bold transition-colors whitespace-nowrap"
+              className={cn(
+                buttonVariants({ variant: "primary", size: "sm" }),
+                // Keep the native title tooltip reachable while disabled, which
+                // the shared disabled:pointer-events-none would otherwise block.
+                "disabled:pointer-events-auto disabled:cursor-not-allowed"
+              )}
             >
-              Register <ChevronRight size={12} className="hidden sm:inline"/>
+              Register <ChevronRight size={16} strokeWidth={1.75} className="hidden sm:inline"/>
             </button>
+            {/* R8 copy table: "Know More" -> "View details". The data-testid is
+                unchanged so existing tests keep passing. */}
             <button
               type="button"
               onClick={knowMore}
               data-testid={`knowmore-btn-${index}`}
-              className="inline-flex items-center justify-center gap-1 border border-white/70 text-white hover:bg-white hover:text-[#0D0D0D] rounded-full px-3 py-2.5 text-xs sm:text-sm font-bold transition-colors whitespace-nowrap"
+              className={buttonVariants({ variant: "secondary", size: "sm" })}
             >
-              Know More
+              View details
             </button>
           </div>
         </div>
       </Link>
 
       {confirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" data-testid="unsave-confirm">
-          <div className="bg-[#18002C] border border-[#46176D] rounded-2xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-white">Remove from saved list?</h3>
-            <p className="mt-1 text-sm text-[#727272]">You can save this event again later.</p>
-            <div className="mt-5 flex gap-3">
-              <button onClick={() => setConfirmOpen(false)} data-testid="unsave-cancel" className="flex-1 bg-[#280049] hover:bg-[#46176D] text-[#BF72FF] rounded-full px-4 py-2.5 text-sm font-bold transition-colors">Cancel</button>
-              <button onClick={confirmRemove} data-testid="unsave-confirm-btn" className="flex-1 bg-[#F84E00] hover:bg-[#D14200] text-white rounded-full px-4 py-2.5 text-sm font-bold transition-colors">Yes, Remove</button>
+        <div className="fixed inset-0 z-40 bg-scrim/60 flex items-center justify-center p-4" data-testid="unsave-confirm">
+          <div className="relative z-50 bg-surface border border-line rounded-lg p-6 max-w-sm w-full shadow-elev-2">
+            <h3 className="t-h3 text-ink">Remove from saved list?</h3>
+            <p className="mt-1 t-body text-ink-2">You can save this event again later.</p>
+            <div className="mt-4 flex gap-3">
+              <button onClick={() => setConfirmOpen(false)} data-testid="unsave-cancel" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "flex-1")}>Cancel</button>
+              {/* R8: destructive is a RED outline, never orange. */}
+              <button onClick={confirmRemove} data-testid="unsave-confirm-btn" className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "flex-1")}>Yes, Remove</button>
             </div>
           </div>
         </div>
