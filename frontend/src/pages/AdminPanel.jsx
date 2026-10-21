@@ -14,6 +14,7 @@ import FormField from "@/components/ui/form-field";
 import { Input, fieldBaseClassNames } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { buttonVariants } from "@/components/ui/button";
+import ImageFinder from "@/components/admin/ImageFinder";
 import { cn } from "@/lib/utils";
 
 const CATEGORIES = ["Workshop", "Meetup", "Hackathon", "Conference", "Walk", "Art & Sketch"];
@@ -740,6 +741,7 @@ const AdminPanel = () => {
               <TabsTrigger data-testid="admin-tab-categories" value="categories">
                 Manage Categories ({homepageCategories.length})
               </TabsTrigger>
+              <TabsTrigger data-testid="admin-tab-images" value="images">Image Finder</TabsTrigger>
             </TabsList>
 
             <TabsContent value="events">
@@ -1137,6 +1139,10 @@ const AdminPanel = () => {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            <TabsContent value="images">
+              <ImageFinder />
             </TabsContent>
           </Tabs>
         </div>
