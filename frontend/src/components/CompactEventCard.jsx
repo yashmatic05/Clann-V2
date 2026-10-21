@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { eventImageHandlers } from "@/lib/image-fallback";
+import EventImage from "@/components/EventImage";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +44,7 @@ const chipClass =
  *   chips 24 + title 32 + location 16 + date 16 + status 16 + button 36 = 140px
  * so p-2 (not p-3) is what keeps the fixed height from clipping.
  */
-const CompactEventCard = ({ event, index = 0, initialSaved = false, usedImages, imageSrc }) => {
+const CompactEventCard = ({ event, index = 0, initialSaved = false }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [saved, setSaved] = useState(initialSaved);
@@ -133,12 +133,7 @@ const CompactEventCard = ({ event, index = 0, initialSaved = false, usedImages, 
     >
       {/* Image — fixed 100px height */}
       <div className="relative h-[100px] shrink-0 overflow-hidden bg-raised">
-        <img
-          {...eventImageHandlers(event, usedImages, imageSrc)}
-          alt={event.title}
-          loading="lazy"
-          className="w-full h-full object-cover"
-        />
+        <EventImage event={event} size="sm" className="h-full w-full" />
         {/* R1: solid surface/ink chips instead of a translucent black overlay, so
             they stay legible over any photograph in both themes. */}
         <div className="absolute top-2 right-2 flex items-center gap-2">

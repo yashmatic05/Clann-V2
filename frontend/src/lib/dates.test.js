@@ -100,3 +100,76 @@ describe("formatEventDate — long form", () => {
     expect(formatEventDate("TBA")).toBe("TBA");
   });
 });
+
+describe("todayIST — the India date, never the UTC date", () => {
+  const { todayIST } = require("./dates");
+
+  test("is a bare YYYY-MM-DD string", () => {
+    expect(todayIST()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("follows Asia/Kolkata, which is UTC+5:30", () => {
+    // 2026-10-21 20:00 UTC is already 01:30 IST on 22 October.
+    expect(todayIST(new Date("2026-10-21T20:00:00Z"))).toBe("2026-10-22");
+    // 2026-10-21 18:29 UTC is 23:59 IST on 21 October.
+    expect(todayIST(new Date("2026-10-21T18:29:00Z"))).toBe("2026-10-21");
+    // Just after IST midnight: 18:31 UTC is 00:01 IST on 22 October.
+    expect(todayIST(new Date("2026-10-21T18:31:00Z"))).toBe("2026-10-22");
+  });
+
+  test("rolls the year over correctly", () => {
+    expect(todayIST(new Date("2026-12-31T19:00:00Z"))).toBe("2027-01-01");
+  });
+});
+
+describe("isExpiredEvent — date-only, IST, today is not expired", () => {
+  const { isExpiredEvent } = require("./dates");
+  const TODAY = "2026-10-21";
+
+  test("an event dated today is NOT expired", () => {
+    expect(isExpiredEvent(TODAY, TODAY)).toBe(false);
+    expect(isExpiredEvent("2026-10-21T18:00:00", TODAY)).toBe(false);
+  });
+
+  test("yesterday is expired, tomorrow is not", () => {
+    expect(isExpiredEvent("2026-10-20", TODAY)).toBe(true);
+    expect(isExpiredEvent("2026-10-22", TODAY)).toBe(false);
+  });
+
+  test("compares date-only strings, not timestamps", () => {
+    // Same calendar day, earlier clock time — still not expired.
+    expect(isExpiredEvent("2026-10-21T00:01:00", TODAY)).toBe(false);
+    // A late time on a past day is still expired.
+    expect(isExpiredEvent("2026-10-20T23:59:00", TODAY)).toBe(true);
+  });
+
+  test("just after IST midnight, yesterday's event is expired", () => {
+    const { todayIST } = require("./dates");
+    const justAfterMidnight = new Date("2026-10-21T18:31:00Z"); // 00:01 IST, 22 Oct
+    expect(isExpiredEvent("2026-10-21", todayIST(justAfterMidnight))).toBe(true);
+    expect(isExpiredEvent("2026-10-22", todayIST(justAfterMidnight))).toBe(false);
+
+    // One minute earlier it is still 21 Oct in India, so 21 Oct is not expired.
+    const beforeMidnight = new Date("2026-10-21T18:29:00Z"); // 23:59 IST, 21 Oct
+    expect(isExpiredEvent("2026-10-21", todayIST(beforeMidnight))).toBe(false);
+  });
+
+  test("an empty or unparseable date is never expired", () => {
+    expect(isExpiredEvent("", TODAY)).toBe(false);
+    expect(isExpiredEvent("   ", TODAY)).toBe(false);
+    expect(isExpiredEvent(null, TODAY)).toBe(false);
+    expect(isExpiredEvent(undefined, TODAY)).toBe(false);
+    expect(isExpiredEvent("not a date", TODAY)).toBe(false);
+    expect(isExpiredEvent("32nd of march", TODAY)).toBe(false);
+    expect(isExpiredEvent("TBA", TODAY)).toBe(false);
+  });
+
+  test("an impossible calendar date is unparseable, not expired", () => {
+    expect(isExpiredEvent("2026-02-31", TODAY)).toBe(false);
+  });
+
+  test("defaults to today in IST when no reference date is passed", () => {
+    expect(isExpiredEvent("1999-01-01")).toBe(true);
+    expect(isExpiredEvent("2999-01-01")).toBe(false);
+  });
+});

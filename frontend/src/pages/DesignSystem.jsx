@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { AlertCircle, Check, Clock, Loader2, Search, Settings2, Share2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import EventCard from "@/components/EventCard";
 import ThemedLogo from "@/components/ThemedLogo";
-import { assignEventImages } from "@/lib/image-fallback";
 import { cn } from "@/lib/utils";
 
 /**
@@ -100,9 +99,10 @@ const isoDateInDays = (days) => {
   return d.toISOString().slice(0, 10);
 };
 
-// Mock event for the sample card. Dates are relative so the registration
-// status never decays. image_url is empty on purpose: the card must go through
-// the untouched image-fallback authority exactly as production does.
+// Mock event for the sample cards. Dates are relative so the registration
+// status never decays. image_url is filled in per state below with a LOCAL
+// data-URI drawing — never a stock URL and never a real external image — so
+// the three image states can be reviewed without any network access.
 const MOCK_EVENT = {
   event_id: "ds-sample-event",
   clann_event_id: "CLN-DSGN-SYST",
@@ -126,6 +126,58 @@ const MOCK_EVENT = {
   external_link: "https://unstop.com/design-systems-workshop",
   image_url: "",
 };
+
+/**
+ * An obviously fake, local sample poster: a flat rectangle with its own
+ * dimensions written on it. Inline SVG via a data URI keeps the style guide
+ * offline and avoids adding any image asset to the repo. Colours are CSS named
+ * colours because components may not carry hex codes (R4/R9).
+ */
+const samplePoster = (label, width, height) => {
+  const svg = [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
+    '<rect width="100%" height="100%" fill="dimgray" />',
+    `<rect x="8" y="8" width="${width - 16}" height="${height - 16}" fill="none" stroke="gainsboro" stroke-width="4" />`,
+    `<text x="50%" y="50%" fill="gainsboro" font-family="sans-serif" font-size="${Math.round(
+      Math.min(width, height) / 12
+    )}" text-anchor="middle" dominant-baseline="middle">${label}</text>`,
+    "</svg>",
+  ].join("");
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
+const SAMPLE_IMAGE_STATES = [
+  {
+    key: "landscape",
+    label: "Landscape image — fills the frame (cover)",
+    event: {
+      ...MOCK_EVENT,
+      event_id: "ds-sample-landscape",
+      title: "Sample landscape poster (1600 x 900)",
+      image_url: samplePoster("Landscape 1600x900", 1600, 900),
+    },
+  },
+  {
+    key: "no-image",
+    label: "No image — flat category placeholder",
+    event: {
+      ...MOCK_EVENT,
+      event_id: "ds-sample-no-image",
+      title: "Sample event with no poster",
+      image_url: "",
+    },
+  },
+  {
+    key: "portrait",
+    label: "Portrait image — shown whole, never cropped (contain)",
+    event: {
+      ...MOCK_EVENT,
+      event_id: "ds-sample-portrait",
+      title: "Sample portrait poster (900 x 1600)",
+      image_url: samplePoster("Portrait 900x1600", 900, 1600),
+    },
+  },
+];
 
 /* -------------------------------------------------------------------------- */
 /* Local layout helpers — tokens only                                         */
@@ -425,22 +477,25 @@ const ChipsAndBadges = ({ theme }) => (
   </Section>
 );
 
-const SampleEventCard = ({ index, usedImages, imageSrc }) => (
+const SampleEventCard = ({ index }) => (
   <Section
-    title="Event card"
-    note="The real EventCard component with a mock event, so the image path goes through the untouched image-fallback authority."
+    title="Event card — the three image states"
+    note="The real EventCard component (and therefore the real EventImage) with local mock posters. No stock photos and no external images are involved."
   >
-    <div className="max-w-sm">
-      <EventCard
-        event={MOCK_EVENT}
-        index={index}
-        usedImages={usedImages}
-        imageSrc={imageSrc}
-      />
+    <div className="grid gap-4 md:grid-cols-3">
+      {SAMPLE_IMAGE_STATES.map(({ key, label, event }, i) => (
+        <div key={key} data-testid={`ds-event-card-${key}`}>
+          <Label>{label}</Label>
+          <div className="mt-2">
+            <EventCard event={event} index={index + i} />
+          </div>
+        </div>
+      ))}
     </div>
     <p className="t-caption mt-3 text-ink-muted">
-      Until Part 2 migrates it, the card still carries its legacy hardcoded dark colours and will
-      look the same in both panels. Its tokens, radius and spacing are converted in Part 2.
+      A real image is always the event's own URL. Landscape fills the frame; portrait or square is
+      shown whole; without a usable image the card shows the flat category placeholder. A stock
+      photo is never displayed, and the hero banner shows real wide images only.
     </p>
   </Section>
 );
@@ -547,7 +602,7 @@ const LogoAndScrim = () => (
 /* Panel + page                                                               */
 /* -------------------------------------------------------------------------- */
 
-const ThemePanel = ({ theme, cardIndex, usedImages, imageSrc }) => (
+const ThemePanel = ({ theme, cardIndex }) => (
   <div
     className={cn(
       "rounded-lg border border-line p-4 lg:p-6",
@@ -568,7 +623,7 @@ const ThemePanel = ({ theme, cardIndex, usedImages, imageSrc }) => (
     <Buttons />
     <FormFields />
     <ChipsAndBadges theme={theme} />
-    <SampleEventCard index={cardIndex} usedImages={usedImages} imageSrc={imageSrc} />
+    <SampleEventCard index={cardIndex} />
     <FeedbackStates />
     <ShapeAndElevation />
     <LogoAndScrim />
@@ -576,11 +631,6 @@ const ThemePanel = ({ theme, cardIndex, usedImages, imageSrc }) => (
 );
 
 const DesignSystem = () => {
-  // Same authority every list page uses. Importing it here does not change how
-  // the image src is chosen — it keeps the sample card honest.
-  const { map, used } = useMemo(() => assignEventImages([MOCK_EVENT]), []);
-  const imageSrc = map.get(MOCK_EVENT.event_id);
-
   return (
     <div className="min-h-screen bg-canvas">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
@@ -600,8 +650,8 @@ const DesignSystem = () => {
         </header>
 
         <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-2">
-          <ThemePanel theme="light" cardIndex={0} usedImages={used} imageSrc={imageSrc} />
-          <ThemePanel theme="dark" cardIndex={1} usedImages={used} imageSrc={imageSrc} />
+          <ThemePanel theme="light" cardIndex={0} />
+          <ThemePanel theme="dark" cardIndex={10} />
         </div>
 
         <footer className="mt-12 border-t border-line pt-6">

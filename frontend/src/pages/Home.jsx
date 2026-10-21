@@ -11,22 +11,11 @@ import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import Footer from "@/components/Footer";
 import MobileEventFeed from "@/components/MobileEventFeed";
 import { useAuth } from "@/context/AuthContext";
-import { assignEventImages } from "@/lib/image-fallback";
 import { Landmark, Megaphone } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const MODES = ["Both", "Online", "Offline"];
-
-/**
- * Featured hero-banner selection — admin-controlled (restored original behavior).
- * The admin's Featured Yes/No toggle in AdminPanel is the single source of truth.
- * No automatic rules: no banner limit, no free/paid ratio,
- * no student-relevance filter, no deadline window, no auto top-up.
- */
-export const selectFeaturedBanners = (allEvents) => {
-  return (allEvents || []).filter((ev) => ev.featured === true);
-};
 
 const Home = () => {
   const { user } = useAuth();
@@ -81,8 +70,6 @@ const Home = () => {
     })();
   }, [category]);
 
-  const featuredBanners = useMemo(() => selectFeaturedBanners(bannerPool), [bannerPool]);
-
   // Live per-tab counts (non-government events, current category)
   const modeCounts = useMemo(() => {
     const online = events.filter((e) => e.mode === "Online" || e.mode === "Both");
@@ -95,15 +82,6 @@ const Home = () => {
     if (mode === "Offline") return events.filter((e) => e.mode === "Offline" || e.mode === "Both");
     return events;
   }, [events, mode]);
-
-  // One shared image assignment for every event visible on this page (hero
-  // slides, desktop grid, government grid, mobile feed): real images win on
-  // their first occurrence; duplicates and blank image_urls get a stock
-  // fallback that never repeats within the page.
-  const { map: imageMap, used: usedImages } = useMemo(
-    () => assignEventImages([...bannerPool, ...govEvents]),
-    [bannerPool, govEvents],
-  );
 
   const isAll = category === "All";
 
@@ -128,7 +106,8 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-canvas overflow-x-hidden max-w-full">
       <Navbar />
-      <HeroBanner events={featuredBanners} imageMap={imageMap} usedImages={usedImages} />
+      {/* The hero picks its own slides from real, wide, upcoming images. */}
+      <HeroBanner events={bannerPool} />
       <WhatsAppReminderBar testid="whatsapp-bar-home" />
 
       {/* Row 1 — Online / Offline mode toggle with live event counts */}
@@ -187,8 +166,6 @@ const Home = () => {
                     event={ev}
                     index={i}
                     initialSaved={savedIds.has(ev.event_id)}
-                    usedImages={usedImages}
-                    imageSrc={imageMap.get(ev.event_id)}
                   />
                 ))}
               </div>
@@ -197,7 +174,7 @@ const Home = () => {
 
           {/* Mobile-only structured feed — shown only when the "All" chip is active (desktop never renders this) */}
           {isAll && !loading && (
-            <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} usedImages={usedImages} imageMap={imageMap} />
+            <MobileEventFeed events={filteredEvents} govEvents={govEvents} savedIds={savedIds} homepageSections={homepageSections} />
           )}
         </motion.div>
       </AnimatePresence>
@@ -220,8 +197,6 @@ const Home = () => {
                 event={ev}
                 index={500 + i}
                 initialSaved={savedIds.has(ev.event_id)}
-                usedImages={usedImages}
-                imageSrc={imageMap.get(ev.event_id)}
               />
             ))}
           </div>

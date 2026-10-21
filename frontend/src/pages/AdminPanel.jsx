@@ -380,8 +380,8 @@ const AdminPanel = () => {
   };
 
   const save = async () => {
-    // image_url is OPTIONAL — events without a real image get an automatic
-    // stock fallback at render time. Never require (or auto-fill) an image.
+    // image_url is OPTIONAL — events without a real image show the flat
+    // category placeholder. Never require (or auto-fill) an image.
     if (!form.title || !form.external_link || !form.event_date) {
       toast.error("Please fill required fields"); return;
     }
@@ -553,8 +553,8 @@ const AdminPanel = () => {
       short_description: "Learn something amazing in 2 hours.",
       full_description: "Full description shown on the event detail page.",
       // image_url is OPTIONAL. Leave it blank when there is no real event
-      // image — the app shows an automatic stock fallback. Do NOT paste a
-      // stock/Unsplash URL here as a stand-in for a real event image.
+      // image — the app shows a flat category placeholder. Never paste a stock
+      // photo URL here as a stand-in for a real event image.
       image_url: "",
       location: "Indiranagar, Bengaluru", city: "Bangalore",
       event_date: "2026-06-15", start_time: "10:00", end_time: "13:00",
@@ -590,7 +590,7 @@ const AdminPanel = () => {
       for (const raw of rows) {
         const payload = normalizeRow(raw);
         // Required: title, external_link, event_date. image_url is OPTIONAL —
-        // blank rows import fine and get a stock fallback at render time.
+        // blank rows import fine and show the category placeholder.
         if (!payload.title || !payload.external_link || !payload.event_date) {
           failed++; continue;
         }

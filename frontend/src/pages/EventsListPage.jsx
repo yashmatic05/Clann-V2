@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
@@ -6,7 +6,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 import { MapPin, Calendar, ChevronLeft } from "lucide-react";
 import { registrationStatus } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
+import EventImage from "@/components/EventImage";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ const categoryColor = (cat) => {
 const chipClass =
   "inline-flex h-6 shrink-0 items-center rounded-md border px-1 t-caption font-semibold whitespace-nowrap";
 
-const RelatedEventCard = ({ event, usedImages, imageSrc }) => {
+const RelatedEventCard = ({ event }) => {
   const navigate = useNavigate();
   const status = registrationStatus(event);
 
@@ -37,7 +37,7 @@ const RelatedEventCard = ({ event, usedImages, imageSrc }) => {
       onClick={() => navigate(`/event/${event.event_id}`)}
       className="w-full h-[300px] bg-surface border border-line hover:border-line-input rounded-lg overflow-hidden cursor-pointer flex flex-col transition-colors duration-fast ease-standard"
     >
-      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-raised" />
+      <EventImage event={event} size="sm" className="w-full h-[100px]" />
       <div className="p-2 flex flex-col gap-1 overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
@@ -97,10 +97,6 @@ const EventsListPage = () => {
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { map: imageMap, used: usedImages } = useMemo(
-    () => assignEventImages(events),
-    [events],
-  );
 
   useEffect(() => {
     (async () => {
@@ -187,7 +183,7 @@ const EventsListPage = () => {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {events.map((ev) => (
-              <RelatedEventCard key={ev.event_id} event={ev} usedImages={usedImages} imageSrc={imageMap.get(ev.event_id)} />
+              <RelatedEventCard key={ev.event_id} event={ev} />
             ))}
           </div>
         )}

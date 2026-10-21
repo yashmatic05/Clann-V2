@@ -2,12 +2,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { AlertCircle, AlertTriangle, Check, Download, FileSpreadsheet, Loader2, Search, Upload } from "lucide-react";
+import { AlertCircle, AlertTriangle, Check, Clock, Download, FileSpreadsheet, Loader2, Search, Trash2, Upload } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import FormField from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { isLandscape, isStockImageUrl } from "@/lib/event-image";
+import { eventDateDay, isExpiredEvent } from "@/lib/dates";
 
 /**
  * Image Finder — admin-only poster lookup (DESIGN_SYSTEM.md compliant).
@@ -25,6 +26,8 @@ const LOOKUP_CONCURRENCY = 3;
 const REASON_COPY = {
   login_gated: "Instagram, Facebook and LinkedIn links can't be read automatically. Paste an image link instead.",
   no_image_found: "This page doesn't publish a preview image.",
+  site_default_image:
+    "This page only has the site's default logo, not a poster for this event. Paste an image link instead.",
   timeout: "Couldn't open this page.",
   unreachable: "Couldn't open this page.",
   http_error: "Couldn't open this page.",
@@ -35,9 +38,66 @@ const REASON_COPY = {
 const BADGE_CLASS =
   "inline-flex h-6 items-center gap-1 rounded-full bg-chip px-2 t-caption font-medium text-ink";
 
+/** A low-resolution poster still renders — it is just warned about. */
+const LOW_RESOLUTION_MAX_WIDTH = 400;
+/** Wider than this is a banner strip, not a poster. */
+const VERY_WIDE_RATIO = 3;
+/** Same URL turning up for this many events is a site logo / default banner. */
+const DUPLICATE_EVENT_THRESHOLD = 2;
+
 const lookupImage = async (url) => {
   const { data } = await api.post("/admin/fetch-image", { url });
   return data || {};
+};
+
+/**
+ * Grouping key for "is this the same image?" — trimmed, with the query string
+ * and hash dropped, so `poster.jpg?w=800` and `poster.jpg?w=1600` compare equal.
+ */
+export const imageKey = (url) => {
+  const raw = String(url ?? "").trim();
+  if (!raw) return "";
+  return raw.split("#")[0].split("?")[0].trim();
+};
+
+/**
+ * Cheap client-side quality rules for a loaded preview. They only ever warn —
+ * nothing here can block saving an image the admin has decided to use.
+ */
+export const qualityWarnings = (natural) => {
+  if (!natural) return [];
+  const width = Number(natural.width);
+  const height = Number(natural.height);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return [];
+  const warnings = [];
+  if (width < LOW_RESOLUTION_MAX_WIDTH) {
+    warnings.push({ key: "low-resolution", label: "Low resolution" });
+  }
+  if (width / height > VERY_WIDE_RATIO) {
+    warnings.push({ key: "very-wide", label: "Very wide, may be a banner strip" });
+  }
+  return warnings;
+};
+
+/**
+ * Flag every result in a finished batch whose image URL was found for 2 or
+ * more events. A repeated URL across unrelated events is almost always the
+ * registration site's own logo or default social banner.
+ */
+export const applyDuplicateFlags = (results) => {
+  const counts = new Map();
+  for (const result of Object.values(results || {})) {
+    const key = imageKey(displayedUrl(result));
+    if (!key) continue;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const next = {};
+  for (const [id, result] of Object.entries(results || {})) {
+    const key = imageKey(displayedUrl(result));
+    const count = key ? counts.get(key) || 1 : 1;
+    next[id] = { ...result, duplicateCount: count };
+  }
+  return next;
 };
 
 /* Simple worker pool: at most LOOKUP_CONCURRENCY lookups in flight. */
@@ -91,32 +151,65 @@ const ResultCard = ({ result, testId, onUse, onTryAnother, onSkip, onPaste, note
   const url = displayedUrl(result);
   const alternatives = result.data?.alternatives || [];
   const reason = result.status === "done" ? (result.data?.reason || null) : null;
-  const loaded = result.natural && result.natural.url === url;
+  const loaded = Boolean(result.natural && result.natural.url === url);
   const landscape = loaded ? isLandscape(result.natural.width, result.natural.height) : null;
-  const failedPreview = result.previewFailed && result.previewFailedUrl === url;
+  const failedPreview = Boolean(result.previewFailed && result.previewFailedUrl === url);
+  const warnings = loaded ? qualityWarnings(result.natural) : [];
+  const duplicateCount = result.duplicateCount || 0;
+  const duplicated = duplicateCount >= DUPLICATE_EVENT_THRESHOLD;
+  /* Every warning is advisory: the label changes, saving is never blocked. */
+  const useAnyway = landscape === false || warnings.length > 0 || duplicated;
 
   return (
     <div className="mt-3 rounded-md border border-line bg-raised p-3" data-testid={testId}>
       {url ? (
         <div className="flex flex-col sm:flex-row gap-3">
-          <img
-            src={url}
-            alt="Candidate poster preview"
-            className="w-full sm:w-40 aspect-video rounded-md border border-line bg-surface object-cover"
-            onLoad={(e) =>
-              result.onNatural({
-                url,
-                width: e.currentTarget.naturalWidth,
-                height: e.currentTarget.naturalHeight,
-              })
-            }
-            onError={() => result.onPreviewError(url)}
-          />
+          {failedPreview ? (
+            <div
+              className="w-full sm:w-40 aspect-video shrink-0 rounded-md border border-line bg-surface flex items-center justify-center"
+              data-testid={`${testId}-preview-unavailable`}
+            >
+              <AlertCircle size={24} strokeWidth={1.75} className="text-ink-muted" aria-hidden="true" />
+            </div>
+          ) : (
+            <img
+              src={url}
+              alt="Candidate poster preview"
+              className="w-full sm:w-40 aspect-video rounded-md border border-line bg-surface object-cover"
+              referrerPolicy="no-referrer"
+              decoding="async"
+              loading="lazy"
+              onLoad={(e) =>
+                result.onNatural({
+                  url,
+                  width: e.currentTarget.naturalWidth,
+                  height: e.currentTarget.naturalHeight,
+                })
+              }
+              onError={() => result.onPreviewError(url)}
+            />
+          )}
           <div className="flex-1 flex flex-col gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {loaded && <OrientationBadge landscape={landscape} />}
               {loaded && !landscape && (
                 <span className="t-caption text-ink-muted">May look small on cards</span>
+              )}
+              {warnings.map((warning) => (
+                <span
+                  key={warning.key}
+                  className={BADGE_CLASS}
+                  data-testid={`${testId}-quality-${warning.key}`}
+                >
+                  <AlertTriangle size={16} strokeWidth={1.75} aria-hidden="true" />
+                  {warning.label}
+                </span>
+              ))}
+              {duplicated && (
+                <span className={BADGE_CLASS} data-testid={`${testId}-duplicate-badge`}>
+                  <AlertTriangle size={16} strokeWidth={1.75} aria-hidden="true" />
+                  {`Same image found for ${duplicateCount} events, probably a site logo or default banner`}
+                </span>
               )}
               {result.data?.source && (
                 <span className={BADGE_CLASS}>{`Found via ${result.data.source}`}</span>
@@ -124,9 +217,12 @@ const ResultCard = ({ result, testId, onUse, onTryAnother, onSkip, onPaste, note
             </div>
             <p className="t-caption text-ink-2 break-all">{url}</p>
             {failedPreview && (
-              <p className="t-caption inline-flex items-start gap-2 text-ink-2">
+              <p
+                className="t-caption inline-flex items-start gap-2 text-ink-2"
+                data-testid={`${testId}-preview-note`}
+              >
                 <AlertCircle size={16} strokeWidth={1.75} aria-hidden="true" />
-                This image couldn't be previewed — check the link before using it.
+                The image link was found but your browser could not load it. Try another image or paste a link.
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2">
@@ -137,7 +233,7 @@ const ResultCard = ({ result, testId, onUse, onTryAnother, onSkip, onPaste, note
                 data-testid={`${testId}-use`}
               >
                 <Check size={16} strokeWidth={1.75} aria-hidden="true" />
-                {landscape === false ? "Use anyway" : "Use this image"}
+                {useAnyway ? "Use anyway" : "Use this image"}
               </button>
               {alternatives.length > 1 && (
                 <button
@@ -205,13 +301,33 @@ const SectionA = () => {
     };
   }, []);
 
-  const needImage = useMemo(
-    () => (events || []).filter((ev) => {
-      const current = String(ev.image_url || "").trim();
-      return !current || isStockImageUrl(current);
-    }),
-    [events]
-  );
+  /**
+   * Expiry is judged in INDIA time (isExpiredEvent defaults to todayIST), and
+   * an expired event is never listed: there is nothing to fix about a poster
+   * for an event that has already happened. There is deliberately no toggle to
+   * bring them back — the caption simply says how many are hidden.
+   */
+  const { needImage, hiddenExpired } = useMemo(() => {
+    const live = (events || []).filter((ev) => !isExpiredEvent(ev.event_date));
+    return {
+      needImage: live.filter((ev) => {
+        const current = String(ev.image_url || "").trim();
+        return !current || isStockImageUrl(current);
+      }),
+      hiddenExpired: (events || []).length - live.length,
+    };
+  }, [events]);
+
+  /* Results flagged as a repeated (probably site-default) image sink to the
+   * bottom so a genuine poster stays at the top of the list. */
+  const orderedNeedImage = useMemo(() => {
+    const rank = (ev) =>
+      (results[ev.event_id]?.duplicateCount || 0) >= DUPLICATE_EVENT_THRESHOLD ? 1 : 0;
+    return needImage
+      .map((ev, i) => ({ ev, i }))
+      .sort((a, b) => rank(a.ev) - rank(b.ev) || a.i - b.i)
+      .map((entry) => entry.ev);
+  }, [needImage, results]);
 
   const patchResult = useCallback((key, patch) => {
     setResults((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }));
@@ -243,6 +359,9 @@ const SectionA = () => {
       done += 1;
       setProgress({ done, total: pending.length });
     });
+    // One image URL turning up for several unrelated events is almost always
+    // the registration site's own logo or default banner.
+    setResults((prev) => applyDuplicateFlags(prev));
     setProgress(null);
   };
 
@@ -284,6 +403,11 @@ const SectionA = () => {
           <p className="t-caption text-ink-muted mt-1">
             We only look at each event's own registration page. Nothing is saved until you approve a preview.
           </p>
+          {hiddenExpired > 0 && (
+            <p className="t-caption text-ink-muted mt-1" data-testid="imagefinder-expired-hidden">
+              {`${hiddenExpired} expired event${hiddenExpired === 1 ? "" : "s"} hidden`}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -315,7 +439,7 @@ const SectionA = () => {
         </div>
       ) : (
         <ul className="mt-4 space-y-3" data-testid="imagefinder-events-list">
-          {needImage.map((ev) => {
+          {orderedNeedImage.map((ev) => {
             const result = results[ev.event_id];
             const stock = isStockImageUrl(String(ev.image_url || "").trim());
             return (
@@ -349,6 +473,9 @@ const SectionA = () => {
                           src={ev.image_url}
                           alt="Current stock image in use"
                           className="w-24 aspect-video rounded-md border border-line bg-raised object-cover"
+                          referrerPolicy="no-referrer"
+                          decoding="async"
+                          loading="lazy"
                         />
                       </span>
                     )}
@@ -436,6 +563,9 @@ const SectionB = () => {
         return;
       }
       const titleIdx = idxOf("title");
+      // event_date is optional: without the column nothing can be expired, so
+      // every row is processed exactly as before.
+      const dateIdx = idxOf("event_date");
       const rows = aoa
         .slice(1)
         .map((r) => headers.map((_, c) => String(r[c] ?? "").trim()));
@@ -450,6 +580,7 @@ const SectionB = () => {
         imgIdx,
         linkIdx,
         titleIdx,
+        dateIdx,
         results: {},
         progress: null,
       });
@@ -469,16 +600,56 @@ const SectionB = () => {
     setSheet((prev) => prev && { ...prev, results: { ...prev.results, [i]: { ...prev.results[i], ...patch } } });
   }, []);
 
-  const needImageRows = useMemo(() => {
-    if (!sheet) return [];
-    const out = [];
+  /**
+   * Date state per row, judged in India time before any lookup happens.
+   *   "expired"  — event_date has passed: the row is skipped entirely and left
+   *                untouched in the downloaded sheet.
+   *   "unclear"  — a date we cannot read: processed normally, with a note.
+   *   "ok"       — a date on or after today in IST.
+   *   "none"     — the sheet has no event_date column at all.
+   */
+  const rowDates = useMemo(() => {
+    const map = new Map();
+    if (!sheet) return map;
+    sheet.rows.forEach((row, i) => {
+      if (sheet.dateIdx < 0) {
+        map.set(i, "none");
+        return;
+      }
+      const raw = row[sheet.dateIdx];
+      if (isExpiredEvent(raw)) map.set(i, "expired");
+      else if (eventDateDay(raw) === null) map.set(i, "unclear");
+      else map.set(i, "ok");
+    });
+    return map;
+  }, [sheet]);
+
+  /* Rows to show (any row that still needs an image) vs rows to process
+   * (the same list minus expired ones). Expired rows are excluded from every
+   * count, so "N rows need an image" never includes them. */
+  const { displayRows, needImageRows } = useMemo(() => {
+    const display = [];
+    const work = [];
+    if (!sheet) return { displayRows: display, needImageRows: work };
     sheet.rows.forEach((row, i) => {
       const current = row[sheet.imgIdx] || "";
       const link = row[sheet.linkIdx] || "";
-      if (link && (!current || isStockImageUrl(current))) out.push(i);
+      if (!link || (current && !isStockImageUrl(current))) return;
+      display.push(i);
+      if (rowDates.get(i) !== "expired") work.push(i);
     });
-    return out;
-  }, [sheet]);
+    return { displayRows: display, needImageRows: work };
+  }, [sheet, rowDates]);
+
+  /* Repeated (probably default) images sink to the bottom of the row list. */
+  const orderedRows = useMemo(() => {
+    const rank = (i) =>
+      (sheet?.results?.[i]?.duplicateCount || 0) >= DUPLICATE_EVENT_THRESHOLD ? 1 : 0;
+    return displayRows
+      .map((i, position) => ({ i, position }))
+      .sort((a, b) => rank(a.i) - rank(b.i) || a.position - b.position)
+      .map((entry) => entry.i);
+  }, [displayRows, sheet]);
 
   const findAll = async () => {
     if (!sheet || needImageRows.length === 0 || busyRef.current) return;
@@ -499,7 +670,9 @@ const SectionB = () => {
       done += 1;
       setSheet((prev) => (prev ? { ...prev, progress: { done, total: pending.length } } : prev));
     });
-    setSheet((prev) => (prev ? { ...prev, progress: null } : prev));
+    setSheet((prev) =>
+      prev ? { ...prev, results: applyDuplicateFlags(prev.results), progress: null } : prev
+    );
     busyRef.current = false;
   };
 
@@ -629,17 +802,37 @@ const SectionB = () => {
           </div>
 
           <ul className="mt-4 space-y-3" data-testid="imagefinder-sheet-rows">
-            {needImageRows.map((i) => {
+            {orderedRows.map((i) => {
               const row = sheet.rows[i];
               const title = sheet.titleIdx >= 0 ? row[sheet.titleIdx] || `Row ${i + 2}` : `Row ${i + 2}`;
               const result = sheet.results[i];
               const applied = row[sheet.imgIdx];
+              const dateState = rowDates.get(i);
+              const expired = dateState === "expired";
               return (
                 <li key={i} className="rounded-md border border-line bg-surface p-3" data-testid={`imagefinder-sheet-row-${i}`}>
                   <div className="flex flex-col md:flex-row md:items-center gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="t-body-strong text-ink">{title}</div>
                       <div className="t-caption text-ink-muted break-all">{row[sheet.linkIdx]}</div>
+                      {expired && (
+                        <p
+                          className="mt-2 inline-flex items-center gap-1 t-caption text-ink-muted"
+                          data-testid={`imagefinder-sheet-expired-${i}`}
+                        >
+                          <Clock size={16} strokeWidth={1.75} aria-hidden="true" />
+                          Event date has passed, skipped
+                        </p>
+                      )}
+                      {dateState === "unclear" && (
+                        <p
+                          className="mt-2 inline-flex items-center gap-1 t-caption text-ink-muted"
+                          data-testid={`imagefinder-sheet-unclear-${i}`}
+                        >
+                          <Clock size={16} strokeWidth={1.75} aria-hidden="true" />
+                          Date unclear
+                        </p>
+                      )}
                       {applied && (
                         <span className="mt-2 inline-flex items-center gap-1 t-caption text-ok" data-testid={`imagefinder-sheet-applied-${i}`}>
                           <Check size={16} strokeWidth={1.75} aria-hidden="true" />
@@ -647,7 +840,7 @@ const SectionB = () => {
                         </span>
                       )}
                     </div>
-                    {!result && (
+                    {!result && !expired && (
                       <button
                         type="button"
                         onClick={() => {
@@ -669,7 +862,7 @@ const SectionB = () => {
                       </button>
                     )}
                   </div>
-                  {result && (
+                  {result && !expired && (
                     <ResultCard
                       result={{
                         ...result,
@@ -698,10 +891,201 @@ const SectionB = () => {
                 </li>
               );
             })}
-            {needImageRows.length === 0 && (
+            {displayRows.length === 0 && (
               <li className="t-caption text-ink-muted py-4 text-center">Every row already has a non-stock image URL.</li>
             )}
           </ul>
+        </div>
+      )}
+    </section>
+  );
+};
+
+/**
+ * Group non-expired events by their SAVED image_url and surface every image
+ * that is currently doing duty for more than one event — usually one event
+ * platform's logo that was approved for several listings by mistake.
+ *
+ * Removing is the existing PUT /events/{id} with an empty image_url, done for
+ * every event in the group; nothing else about the event is touched.
+ */
+const GroupThumbnail = ({ url, label }) => {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
+    return (
+      <span className="flex h-16 w-24 shrink-0 items-center justify-center rounded-md border border-line bg-raised">
+        <AlertCircle size={24} strokeWidth={1.75} className="text-ink-muted" aria-hidden="true" />
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={label}
+      className="h-16 w-24 shrink-0 rounded-md border border-line bg-raised object-cover"
+      referrerPolicy="no-referrer"
+      decoding="async"
+      loading="lazy"
+      onError={() => setBroken(true)}
+    />
+  );
+};
+
+const SectionC = () => {
+  const [groups, setGroups] = useState(null); // null = loading
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [confirming, setConfirming] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    api
+      .get("/events")
+      .then((res) => {
+        if (!mounted.current) return;
+        const events = Array.isArray(res.data) ? res.data : [];
+        const byKey = new Map();
+        for (const ev of events) {
+          if (!ev || isExpiredEvent(ev.event_date)) continue;
+          const key = imageKey(ev.image_url);
+          if (!key) continue;
+          if (!byKey.has(key)) byKey.set(key, { key, url: String(ev.image_url).trim(), events: [] });
+          byKey.get(key).events.push(ev);
+        }
+        const shared = [...byKey.values()]
+          .filter((group) => group.events.length > 1)
+          .sort((a, b) => b.events.length - a.events.length);
+        setGroups(shared);
+      })
+      .catch(() => {
+        if (!mounted.current) return;
+        setLoadFailed(true);
+        setGroups([]);
+      });
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  const removeFromAll = async (group) => {
+    setBusy(true);
+    const count = group.events.length;
+    try {
+      for (const ev of group.events) {
+        await api.put(`/events/${ev.event_id}`, { image_url: "" });
+      }
+      if (!mounted.current) return;
+      setGroups((prev) => (prev || []).filter((g) => g.key !== group.key));
+      toast.success(`Image removed from ${count} events`);
+    } catch {
+      if (!mounted.current) return;
+      toast.error("Couldn't remove the image from every event");
+    } finally {
+      if (mounted.current) {
+        setBusy(false);
+        setConfirming(null);
+      }
+    }
+  };
+
+  if (groups === null) {
+    return (
+      <div className="space-y-3" aria-hidden="true">
+        <div className="h-16 rounded-lg bg-raised animate-pulse" />
+        <div className="h-16 rounded-lg bg-raised animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <section className="bg-surface border border-line rounded-lg p-4 lg:p-6" data-testid="imagefinder-shared">
+      <h3 className="t-h3 text-ink">Same image on several events</h3>
+      <p className="t-caption text-ink-muted mt-1">
+        One poster URL saved on more than one event is usually a site logo. Removing it here leaves everything else about those events exactly as it is.
+      </p>
+
+      {loadFailed && (
+        <p className="mt-4 inline-flex items-start gap-2 bg-danger-bg border border-danger rounded-md p-4 t-caption text-danger">
+          <AlertCircle size={16} strokeWidth={1.75} aria-hidden="true" />
+          Couldn't load the event list. Reload this page to try again.
+        </p>
+      )}
+
+      {groups.length === 0 ? (
+        <p className="mt-4 t-caption text-ink-muted" data-testid="imagefinder-shared-empty">
+          No image is shared between events.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3" data-testid="imagefinder-shared-list">
+          {groups.map((group) => (
+            <li
+              key={group.key}
+              className="rounded-lg border border-line p-4"
+              data-testid={`imagefinder-shared-group-${group.key}`}
+            >
+              <div className="flex flex-col md:flex-row md:items-center gap-3">
+                <GroupThumbnail url={group.url} label="Image used by several events" />
+                <div className="flex-1 min-w-0">
+                  <div className="t-body-strong text-ink">{`Used by ${group.events.length} events`}</div>
+                  <p className="t-caption text-ink-muted break-words">
+                    {group.events.map((ev) => ev.title || ev.event_id).join(" · ")}
+                  </p>
+                  <p className="t-caption text-ink-2 break-all mt-1">{group.url}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0 self-start md:self-center">
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(group)}
+                    disabled={busy}
+                    className={cn(buttonVariants({ variant: "destructive", size: "sm" }))}
+                    data-testid={`imagefinder-shared-remove-${group.key}`}
+                  >
+                    <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
+                    {`Remove from all ${group.events.length} events`}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGroups((prev) => (prev || []).filter((g) => g.key !== group.key))}
+                    className={cn(buttonVariants({ variant: "tertiary", size: "sm" }))}
+                    data-testid={`imagefinder-shared-keep-${group.key}`}
+                  >
+                    Keep
+                  </button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {confirming && (
+        <div className="fixed inset-0 z-40 bg-scrim/60 flex items-center justify-center p-4" data-testid="imagefinder-shared-confirm">
+          <div className="relative z-50 bg-surface border border-line rounded-lg p-6 max-w-sm w-full shadow-elev-2">
+            <h3 className="t-h3 text-ink">Remove this image?</h3>
+            <p className="mt-1 t-body text-ink-2">
+              {`Remove this image from ${confirming.events.length} events? The events keep everything else and will need a new poster.`}
+            </p>
+            <div className="mt-4 flex gap-3">
+              <button
+                onClick={() => setConfirming(null)}
+                disabled={busy}
+                className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "flex-1")}
+                data-testid="imagefinder-shared-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => removeFromAll(confirming)}
+                disabled={busy}
+                className={cn(buttonVariants({ variant: "destructive", size: "sm" }), "flex-1")}
+                data-testid="imagefinder-shared-confirm-btn"
+              >
+                Remove image
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </section>
@@ -712,6 +1096,7 @@ const ImageFinder = () => (
   <div className="space-y-6" data-testid="imagefinder">
     <SectionA />
     <SectionB />
+    <SectionC />
   </div>
 );
 
