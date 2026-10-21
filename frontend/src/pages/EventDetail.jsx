@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "@/lib/api";
 import Navbar from "@/components/Navbar";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
+import EventImage from "@/components/EventImage";
 import WhatsAppIcon from "@/components/WhatsAppIcon";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ const categoryColor = (cat) => {
 const chipClass =
   "inline-flex h-6 shrink-0 items-center rounded-md border px-1 t-caption font-semibold whitespace-nowrap";
 
-const RelatedEventCard = ({ event, savedIds, usedImages, imageSrc }) => {
+const RelatedEventCard = ({ event, savedIds }) => {
   const navigate = useNavigate();
   const status = registrationStatus(event);
 
@@ -42,7 +42,7 @@ const RelatedEventCard = ({ event, savedIds, usedImages, imageSrc }) => {
       onClick={() => navigate(`/event/${event.event_id}`)}
       className="flex-shrink-0 w-[200px] h-[300px] bg-surface border border-line hover:border-line-input rounded-lg overflow-hidden cursor-pointer flex flex-col transition-colors duration-fast ease-standard"
     >
-      <img {...eventImageHandlers(event, usedImages, imageSrc)} alt={event.title} className="w-full h-[100px] object-cover bg-raised" />
+      <EventImage event={event} size="sm" className="w-full h-[100px]" />
       <div className="p-2 flex flex-col gap-1 overflow-hidden flex-1">
         {/* Row 1 */}
         <div className="flex">
@@ -102,12 +102,6 @@ const EventDetail = () => {
   const [related, setRelated] = useState([]);
   const [saved, setSaved] = useState(false);
   const [remindOn, setRemindOn] = useState(false);
-  // One assignment across the main banner + related cards so real images win
-  // and stock fallbacks never repeat on this page.
-  const { map: imageMap, used: usedImages } = useMemo(
-    () => assignEventImages(event ? [event, ...(related || [])] : []),
-    [event, related],
-  );
 
   useEffect(() => {
     (async () => {
@@ -237,7 +231,7 @@ const EventDetail = () => {
           )}
 
           <div className="relative rounded-lg overflow-hidden aspect-[16/9] bg-raised">
-            <img {...eventImageHandlers(event, usedImages, imageMap.get(event.event_id))} alt={event.title} className="w-full h-full object-cover" />
+            <EventImage event={event} size="lg" priority className="h-full w-full" />
             <div className="absolute top-4 right-4 flex gap-2">
               <button data-testid="detail-share" onClick={share} title="Share event" className="flex h-11 w-11 items-center justify-center rounded-full border border-line bg-surface text-ink transition-colors duration-fast ease-standard hover:bg-raised">
                 <Share2 size={16} strokeWidth={1.75}/>
@@ -401,7 +395,7 @@ const EventDetail = () => {
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               {related.map((r) => (
-                <RelatedEventCard key={r.event_id} event={r} usedImages={usedImages} imageSrc={imageMap.get(r.event_id)} />
+                <RelatedEventCard key={r.event_id} event={r} />
               ))}
             </div>
           </div>

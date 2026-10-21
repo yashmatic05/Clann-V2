@@ -1,17 +1,15 @@
 /**
- * Shared event-poster image rules for the admin Image Finder flow.
+ * Shared event-poster image rules for every surface that displays an event
+ * image: <EventImage>, the hero banner and the admin Image Finder.
  *
- * These constants are deliberately NOT in image-fallback.js (that file is a
- * frozen regression lock for the render-time stock fallback — see
- * image-fallback.test.js). Nothing here ever picks, suggests or substitutes a
- * stock image: MIN_LANDSCAPE_RATIO just says when an image is wide enough to
- * look right on a 16:9 card, and STOCK_IMAGE_HOSTS lets the UI RECOGNISE and
- * flag stock URLs — never generate them.
- *
- * MIN_LANDSCAPE_RATIO mirrors the 1.2 width/height threshold that
- * image-fallback.js uses for display (16:9 ≈ 1.78 and 4:3 ≈ 1.33 posters
- * pass; square and portrait images do not), so admin tooling and the render
- * fallback judge "landscape" the same way.
+ * Nothing here ever picks, suggests or substitutes an image. The functions are
+ * pure predicates:
+ *   - MIN_LANDSCAPE_RATIO / isLandscape decide whether an image fills a 16:9
+ *     frame or has to be shown whole (16:9 ≈ 1.78 and 4:3 ≈ 1.33 pass; square
+ *     and portrait do not).
+ *   - STOCK_IMAGE_HOSTS / isStockImageUrl RECOGNISE stock URLs so they can be
+ *     flagged, never generated.
+ *   - hasUsableImage says whether a stored image_url may be displayed at all.
  */
 
 export const MIN_LANDSCAPE_RATIO = 1.2;
@@ -64,4 +62,18 @@ export const isStockImageUrl = (url) => {
   return STOCK_IMAGE_HOSTS.some(
     (host) => hostname === host || hostname.endsWith(`.${host}`)
   );
+};
+
+/**
+ * True when an event has an image we are allowed to show: a non-empty
+ * `image_url` after trimming that is NOT hosted on a stock-photo site.
+ *
+ * This is the single gate used by <EventImage> (placeholder otherwise) and by
+ * the hero banner (candidate selection). It never looks at the network — an
+ * image that later fails to load is handled by the caller.
+ */
+export const hasUsableImage = (event) => {
+  const url = String(event?.image_url ?? "").trim();
+  if (!url) return false;
+  return !isStockImageUrl(url);
 };

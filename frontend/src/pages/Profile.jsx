@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
@@ -11,7 +11,7 @@ import { api } from "@/lib/api";
 import { toast } from "sonner";
 import WhatsAppReminderBar from "@/components/WhatsAppReminderBar";
 import { priceLabel, priceBadgeClass } from "@/lib/event-utils";
-import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
+import EventImage from "@/components/EventImage";
 import { buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ const registrationStatus = (event) => {
 /* SavedEventCard — exact compact design from Home horizontal rows,    */
 /* but bookmark triggers the existing unsave confirmation flow.        */
 /* ------------------------------------------------------------------ */
-const SavedEventCard = ({ event, index = 0, onUnsave, usedImages, imageSrc }) => {
+const SavedEventCard = ({ event, index = 0, onUnsave }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [removing, setRemoving] = useState(false);
@@ -123,12 +123,7 @@ const SavedEventCard = ({ event, index = 0, onUnsave, usedImages, imageSrc }) =>
       >
         {/* Image — fixed 100px */}
         <div className="relative h-[100px] shrink-0 overflow-hidden bg-raised">
-          <img
-            {...eventImageHandlers(event, usedImages, imageSrc)}
-            alt={event.title}
-            loading="lazy"
-            className="w-full h-full object-cover"
-          />
+          <EventImage event={event} size="md" className="h-full w-full" />
           {/* Filled bookmark in the selected pair → unsave confirmation */}
           <button
             type="button"
@@ -215,11 +210,6 @@ const Profile = () => {
 
   const [saved, setSaved] = useState([]);
   const [myEvents, setMyEvents] = useState([]);
-  // Display-only image assignment for the saved-events row.
-  const { map: imageMap, used: usedImages } = useMemo(
-    () => assignEventImages(saved),
-    [saved],
-  );
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
@@ -331,8 +321,6 @@ const Profile = () => {
                   event={ev}
                   index={i}
                   onUnsave={removeSaved}
-                  usedImages={usedImages}
-                  imageSrc={imageMap.get(ev.event_id)}
                 />
               ))}
             </div>

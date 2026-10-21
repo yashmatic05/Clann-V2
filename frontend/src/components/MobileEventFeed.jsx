@@ -42,7 +42,7 @@ const SectionHeading = ({ title }) => {
 
 // Horizontal scrollable row of compact cards — 16px left padding, 12px gap,
 // no visible scrollbar, smooth iOS touch scroll
-const HorizontalRow = ({ events, savedIds, usedImages, imageMap }) => (
+const HorizontalRow = ({ events, savedIds }) => (
   <div className="mt-3 flex gap-3 overflow-x-auto scrollbar-hide [-webkit-overflow-scrolling:touch] px-4 pb-1">
     {events.map((ev, i) => (
       <CompactEventCard
@@ -50,14 +50,12 @@ const HorizontalRow = ({ events, savedIds, usedImages, imageMap }) => (
         event={ev}
         index={i}
         initialSaved={savedIds ? savedIds.has(ev.event_id) : false}
-        usedImages={usedImages}
-        imageSrc={imageMap?.get(ev.event_id)}
       />
     ))}
   </div>
 );
 
-const HorizontalSection = ({ title, events, savedIds, usedImages, imageMap }) => {
+const HorizontalSection = ({ title, events, savedIds }) => {
   if (events.length === 0) return null;
   return (
     <section className="mt-8 overflow-x-hidden max-w-full">
@@ -65,14 +63,14 @@ const HorizontalSection = ({ title, events, savedIds, usedImages, imageMap }) =>
         <SectionHeading title={title} />
       </div>
       <div className="overflow-hidden overflow-x-hidden max-w-full">
-        <HorizontalRow events={events} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalRow events={events} savedIds={savedIds} />
       </div>
     </section>
   );
 };
 
 // Vertical stack of full-width EventCards — the exact existing component
-const VerticalBlock = ({ events, startIndex, savedIds, usedImages, imageMap }) => {
+const VerticalBlock = ({ events, startIndex, savedIds }) => {
   if (events.length === 0) return null;
   return (
     <div className="px-4 flex flex-col gap-4">
@@ -82,8 +80,6 @@ const VerticalBlock = ({ events, startIndex, savedIds, usedImages, imageMap }) =
           event={ev}
           index={startIndex + i}
           initialSaved={savedIds.has(ev.event_id)}
-          usedImages={usedImages}
-          imageSrc={imageMap?.get(ev.event_id)}
         />
       ))}
     </div>
@@ -104,7 +100,7 @@ const VerticalBlock = ({ events, startIndex, savedIds, usedImages, imageMap }) =
  * consume events, so they never appear in both a custom section and a
  * hardcoded section.
  */
-const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [], usedImages, imageMap }) => {
+const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [] }) => {
   const feed = useMemo(() => {
     const shown = new Set();
 
@@ -192,79 +188,79 @@ const MobileEventFeed = ({ events, govEvents, savedIds, homepageSections = [], u
       {/* 2 stacked full width EventCards */}
       {feed.pair1.length > 0 && (
         <div className="mt-6">
-          <VerticalBlock events={feed.pair1} startIndex={1000} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.pair1} startIndex={1000} savedIds={savedIds} />
         </div>
       )}
 
       {/* Upcoming Events horizontal scroll section */}
       {feed.upcoming.length > 0 && (
-        <HorizontalSection title="Upcoming Events" events={feed.upcoming} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalSection title="Upcoming Events" events={feed.upcoming} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
       {feed.pair2.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.pair2} startIndex={1010} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.pair2} startIndex={1010} savedIds={savedIds} />
         </div>
       )}
 
       {/* Government Events horizontal scroll section */}
       {feed.govList.length > 0 && (
-        <HorizontalSection title="Government Events" events={feed.govList} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalSection title="Government Events" events={feed.govList} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
       {feed.pair3.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.pair3} startIndex={1020} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.pair3} startIndex={1020} savedIds={savedIds} />
         </div>
       )}
 
       {/* Workshops horizontal scroll section */}
       {feed.workshops.length > 0 && (
-        <HorizontalSection title="Workshops" events={feed.workshops} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalSection title="Workshops" events={feed.workshops} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
       {feed.pair4.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.pair4} startIndex={1030} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.pair4} startIndex={1030} savedIds={savedIds} />
         </div>
       )}
 
       {/* Hackathons horizontal scroll section */}
       {feed.hackathons.length > 0 && (
-        <HorizontalSection title="Hackathons & Competitions" events={feed.hackathons} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalSection title="Hackathons & Competitions" events={feed.hackathons} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
       {feed.pair5.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.pair5} startIndex={1040} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.pair5} startIndex={1040} savedIds={savedIds} />
         </div>
       )}
 
       {/* Meetups horizontal scroll section */}
       {feed.meetups.length > 0 && (
-        <HorizontalSection title="Meetups" events={feed.meetups} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalSection title="Meetups" events={feed.meetups} savedIds={savedIds} />
       )}
 
       {/* 2 stacked full width EventCards */}
       {feed.pair6.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.pair6} startIndex={1050} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.pair6} startIndex={1050} savedIds={savedIds} />
         </div>
       )}
 
       {/* Custom homepage_category sections */}
       {feed.customSections.map((sec) => (
-        <HorizontalSection key={sec.title} title={sec.title} events={sec.events} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+        <HorizontalSection key={sec.title} title={sec.title} events={sec.events} savedIds={savedIds} />
       ))}
 
       {/* Remaining events as stacked cards */}
       {feed.remaining.length > 0 && (
         <div className="mt-8">
-          <VerticalBlock events={feed.remaining} startIndex={1060} savedIds={savedIds} usedImages={usedImages} imageMap={imageMap} />
+          <VerticalBlock events={feed.remaining} startIndex={1060} savedIds={savedIds} />
         </div>
       )}
     </div>

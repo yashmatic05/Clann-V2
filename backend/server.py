@@ -8,6 +8,7 @@ import re
 import json
 import asyncio
 import secrets
+import time
 import socket
 import ipaddress
 import string
@@ -22,6 +23,7 @@ from urllib.parse import urljoin, urlsplit
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -35,6 +37,22 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Clann is a Delhi-only product, and every event_date is a bare YYYY-MM-DD
+# string. "Has this event already happened?" is therefore decided in INDIA
+# time, never in UTC: datetime.utcnow() is 5h30m behind IST, which hid an event
+# on its own final evening for five and a half hours. zoneinfo carries the
+# rules (including the historical ones), so there is no offset arithmetic here.
+INDIA_TZ = ZoneInfo("Asia/Kolkata")
+
+
+def today_ist(now: Optional[datetime] = None) -> str:
+    """Today's date in India as YYYY-MM-DD (optionally at a given instant)."""
+    moment = now or datetime.now(timezone.utc)
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return moment.astimezone(INDIA_TZ).strftime("%Y-%m-%d")
+
 
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL')
 ADMIN_PASSWORD_HASH = os.environ.get('ADMIN_PASSWORD_HASH')
@@ -660,6 +678,7 @@ IMAGE_LOOKUP_MAX_PAGE_BYTES = 1_500_000  # read at most 1.5 MB of page HTML
 IMAGE_LOOKUP_MAX_HOPS = 3            # redirects followed manually
 IMAGE_LOOKUP_MAX_CANDIDATES = 4      # candidate image URLs verified at most
 IMAGE_LOOKUP_DEMOTE_MARKERS = ("logo", "favicon", "sprite", "placeholder", "default")
+IMAGE_LOOKUP_HOMEPAGE_TTL = 3600  # seconds; at most 1 homepage fetch per host per hour
 
 
 def _image_lookup_host_gated(hostname: str) -> bool:
@@ -930,6 +949,94 @@ def _image_lookup_candidates(html: str, final_url: str) -> list:
     return keep + demoted
 
 
+def _image_lookup_origin_key(url: str) -> str:
+    """Host + path of a URL, lowercased host, query and fragment dropped.
+
+    This is the identity used to recognise "the same image as the site's own
+    default": CDN query strings (?w=1200&h=630, ?v=3) differ per share while
+    the underlying asset does not.
+    """
+    try:
+        parts = urlsplit(str(url or "").strip())
+    except ValueError:
+        return ""
+    host = (parts.hostname or "").lower()
+    if not host:
+        return ""
+    path = parts.path or "/"
+    return f"{host}{path}"
+
+
+# In-memory cache: "host" -> (monotonic timestamp, set of origin keys | None).
+# None means "we tried and could not read the homepage", which is cached too so
+# a broken host is never hammered.
+_image_lookup_homepage_cache: dict = {}
+
+
+async def _image_lookup_homepage_keys(client, final_url: str):
+    """og:image / twitter:image origin keys of the SAME host's homepage.
+
+    One fetch per host per hour (cached in memory). Returns a set of keys, or
+    None when the homepage could not be read — in which case the caller skips
+    generic detection entirely and behaves exactly as before.
+    """
+    try:
+        parts = urlsplit(final_url)
+        scheme = (parts.scheme or "").lower()
+        host = (parts.hostname or "").lower()
+        port = parts.port
+    except ValueError:
+        return None
+    if scheme not in ("http", "https") or not host:
+        return None
+    cache_key = host if port in (None, 80, 443) else f"{host}:{port}"
+
+    now = time.monotonic()
+    cached = _image_lookup_homepage_cache.get(cache_key)
+    if cached is not None and (now - cached[0]) < IMAGE_LOOKUP_HOMEPAGE_TTL:
+        return cached[1]
+
+    keys = None
+    try:
+        homepage = f"{scheme}://{cache_key}/"
+        page = await _image_lookup_get(client, homepage, want="html")
+        if page["ok"]:
+            parser = _ImageLookupPageParser()
+            try:
+                parser.feed(page["body"] or "")
+                parser.close()
+            except Exception:
+                pass
+            keys = set()
+            for raw in (
+                parser.metas.get("og:image:secure_url"),
+                parser.metas.get("og:image"),
+                parser.metas.get("twitter:image"),
+                parser.metas.get("twitter:image:src"),
+            ):
+                if not raw:
+                    continue
+                key = _image_lookup_origin_key(urljoin(page["final_url"], str(raw).strip()))
+                if key:
+                    keys.add(key)
+    except Exception:
+        keys = None  # never let this check break a lookup
+
+    _image_lookup_homepage_cache[cache_key] = (now, keys)
+    return keys
+
+
+def _image_lookup_is_generic(url: str, homepage_keys) -> bool:
+    """True when `url` is the site's own default image rather than a poster."""
+    if homepage_keys and _image_lookup_origin_key(url) in homepage_keys:
+        return True
+    try:
+        path = urlsplit(str(url or "")).path.lower()
+    except ValueError:
+        path = str(url or "").lower()
+    return any(marker in path for marker in IMAGE_LOOKUP_DEMOTE_MARKERS)
+
+
 @api_router.post("/admin/fetch-image")
 async def admin_fetch_image(payload: ImageLookupRequest, _=Depends(require_admin)):
     """Find a real poster image on the event's own registration page.
@@ -938,17 +1045,32 @@ async def admin_fetch_image(payload: ImageLookupRequest, _=Depends(require_admin
     Outcomes are always HTTP 200 with {image_url, alternatives, source,
     page_url, reason}; 401 is missing admin auth and 422 a malformed body
     (both handled by FastAPI itself).
+
+    A candidate that is really the site's own default image (its homepage
+    og:image / twitter:image, or a logo-like path) is never offered as a
+    poster. Those URLs are reported separately in `generic_candidates`, which
+    is only present when the list is non-empty.
     """
     url = (payload.url or "").strip()
 
-    def result(image_url=None, alternatives=None, source=None, page_url=url, reason=None):
-        return {
+    def result(
+        image_url=None,
+        alternatives=None,
+        source=None,
+        page_url=url,
+        reason=None,
+        generic_candidates=None,
+    ):
+        payload = {
             "image_url": image_url,
             "alternatives": alternatives or [],
             "source": source,
             "page_url": page_url,
             "reason": reason,
         }
+        if generic_candidates:
+            payload["generic_candidates"] = list(generic_candidates)
+        return payload
 
     try:
         parts = urlsplit(url)
@@ -961,6 +1083,7 @@ async def admin_fetch_image(payload: ImageLookupRequest, _=Depends(require_admin
         return result(reason="login_gated")
 
     verified = []
+    generic = []
     final_url = url
     try:
         async with httpx.AsyncClient(
@@ -979,14 +1102,32 @@ async def admin_fetch_image(payload: ImageLookupRequest, _=Depends(require_admin
                 probe = await _image_lookup_get(image_client, cand_url, want="image")
                 if probe["ok"]:
                     verified.append((cand_url, cand_source))
+            if verified:
+                # A share image is very often the platform's own logo or
+                # default banner. One cached homepage fetch per host tells us
+                # which candidate that is; if it fails we keep everything.
+                homepage_keys = await _image_lookup_homepage_keys(page_client, final_url)
+                if homepage_keys is not None:
+                    kept = []
+                    for cand_url, cand_source in verified:
+                        if _image_lookup_is_generic(cand_url, homepage_keys):
+                            generic.append(cand_url)
+                        else:
+                            kept.append((cand_url, cand_source))
+                    verified = kept
     except httpx.TimeoutException:
         return result(page_url=final_url, reason="timeout")
     except (httpx.HTTPError, OSError):
         return result(page_url=final_url, reason="unreachable")
 
     if not verified:
-        # Nothing published (or nothing reachable) — say so honestly.
-        return result(page_url=final_url, reason="no_image_found")
+        # Nothing published, nothing reachable, or everything reachable was the
+        # site's own default image — say which, honestly.
+        return result(
+            page_url=final_url,
+            reason="site_default_image" if generic else "no_image_found",
+            generic_candidates=generic,
+        )
 
     first_url, first_source = verified[0]
     return result(
@@ -995,6 +1136,7 @@ async def admin_fetch_image(payload: ImageLookupRequest, _=Depends(require_admin
         source=first_source,
         page_url=final_url,
         reason=None,
+        generic_candidates=generic,
     )
 
 # -----------------------------
@@ -1070,8 +1212,10 @@ async def list_events(
         query["is_government"] = is_government
 
     if not verify_admin_token(x_admin_token or ""):
-        today_str = datetime.utcnow().strftime("%Y-%m-%d")
-        query["event_date"] = {"$gte": today_str}
+        # Public view only: an event is hidden once its date has passed in
+        # India. An admin request deliberately still sees everything, including
+        # events that have already happened.
+        query["event_date"] = {"$gte": today_ist()}
 
     if q:
         docs = await db.events.find(query, {"_id": 0}).sort("event_date", 1).to_list(500)

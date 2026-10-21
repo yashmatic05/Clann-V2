@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search as SearchIcon } from "lucide-react";
 import { api, searchEvents } from "@/lib/api";
@@ -6,7 +6,6 @@ import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
 import EventCard from "@/components/EventCard";
 import { useAuth } from "@/context/AuthContext";
-import { assignEventImages } from "@/lib/image-fallback";
 import { Input } from "@/components/ui/input";
 
 const Search = () => {
@@ -17,10 +16,6 @@ const Search = () => {
   const [savedIds, setSavedIds] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const { map: imageMap, used: usedImages } = useMemo(
-    () => assignEventImages(results),
-    [results],
-  );
 
   // Load saved events for current user
   useEffect(() => {
@@ -113,8 +108,6 @@ const Search = () => {
               event={ev}
               index={i}
               initialSaved={savedIds.has(ev.event_id)}
-              usedImages={usedImages}
-              imageSrc={imageMap.get(ev.event_id)}
             />
           ))}
         </div>

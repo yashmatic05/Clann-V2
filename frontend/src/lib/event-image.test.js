@@ -13,7 +13,7 @@ const {
 } = require("./event-image");
 
 describe("MIN_LANDSCAPE_RATIO", () => {
-  test("is the same 1.2 threshold image-fallback.js uses for display", () => {
+  test("is the 1.2 threshold that decides cover vs contain in EventImage", () => {
     expect(MIN_LANDSCAPE_RATIO).toBe(1.2);
   });
 });

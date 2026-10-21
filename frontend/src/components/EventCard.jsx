@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { registrationStatus, priceLabel, priceBadgeClass } from "@/lib/event-utils";
 import { formatEventDateShort } from "@/lib/dates";
-import { eventImageHandlers } from "@/lib/image-fallback";
+import EventImage from "@/components/EventImage";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +38,7 @@ const categoryColor = (cat) => {
 const chipClass =
   "inline-flex h-6 shrink-0 items-center rounded-md border px-2 t-caption font-semibold whitespace-nowrap";
 
-const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImages, imageSrc }) => {
+const EventCard = ({ event, index = 0, initialSaved = false, onUnsave }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [saved, setSaved] = useState(initialSaved);
@@ -127,12 +127,7 @@ const EventCard = ({ event, index = 0, initialSaved = false, onUnsave, usedImage
       >
         {/* Image — clean, only copy/save icons overlaid */}
         <div className="relative aspect-video overflow-hidden bg-raised">
-          <img
-            {...eventImageHandlers(event, usedImages, imageSrc)}
-            alt={event.title}
-            className="w-full h-full object-cover"
-            loading="lazy"
-          />
+          <EventImage event={event} size="md" className="h-full w-full" />
           {/* R1: flat, opaque chips — no frosted-glass effect and no translucent
               black scrim. Surface/ink keeps them legible over any photograph in
               both themes. R2: orange is never an icon-button hover. */}

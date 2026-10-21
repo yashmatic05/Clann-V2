@@ -52,6 +52,18 @@ Map the existing shadcn color names in tailwind.config.js onto these tokens so e
 
 Contrast rules (all verified): light purple (chip) is never text on the light theme (1.85:1). White text on orange fails (3.45:1), so labels on orange are ALWAYS `text-on-cta` (indigo, 5.13:1). Orange text smaller than 18px uses `text-cta-text`. Error red must never be used for orange-ish emphasis, and destructive buttons use a red outline, never orange. Color never carries meaning alone: errors and statuses always have an icon and words. There is no warning/amber color.
 
+Event images (EventImage). Every event image is rendered by `<EventImage>` —
+never by a bare `<img>`, and never by a component choosing a URL itself. The
+rules: show the event's own real `image_url` only; a landscape image fills the
+frame (`object-cover`); a portrait or square image is shown whole
+(`object-contain`) rather than cropped; with no usable image — empty, a stock
+host, or a failed load — show the flat category placeholder (one lucide line
+icon in `text-ink-muted`, 24/32/48 by size, plus the category name at md and lg,
+in a `bg-raised` frame). Never a stock photo, never a gradient, never a pattern,
+never a substituted image. The hero banner shows real wide images only (at least
+800px wide, ratio at least 1.5) and renders nothing at all when none qualify.
+
+
 R3. TYPOGRAPHY (Satoshi, already loaded; use weights 400, 500, 700; 900 only for Display)
 Add these classes in `@layer components` in index.css. Breakpoint for "desktop" is md (768px).
 
@@ -132,7 +144,7 @@ Any other generic label (Submit, Learn more, Click here) -> a verb plus the obje
 
 Inputs. Create src/components/ui/form-field.jsx (label, optional hint, error) and update ui/input, textarea and select to: h-11 (textarea min-h-24), px-4, py-3 for textarea, rounded-md, `border border-line-input bg-surface text-ink placeholder:text-ink-muted`, text-base on mobile and text-sm from md (prevents iOS zoom), `hover:border-ink-2`, `focus-visible:border-ink`, `aria-[invalid=true]:border-danger`, `disabled:bg-raised disabled:text-ink-disabled`. Label above the field in .t-label text-ink-2 (required fields end with " *"). Hint in .t-caption text-ink-muted. Error = 16px AlertCircle icon plus message in .t-caption text-danger below the field, with aria-invalid and aria-describedby wired. Validate on blur and on submit; the error clears while typing. Checkbox, radio and switch are on-state `bg-selected`, never orange, with a 44px tap area. Replace the local `Field` components and inputCls strings in OrganizerSubmit.jsx, AdminPanel.jsx, CompleteProfile.jsx, Auth.jsx and AdminLogin.jsx with FormField and the shared input classes, keeping every data-testid and all validation logic.
 
-Event cards (EventCard, CompactEventCard, and the RelatedEventCard in EventDetail.jsx and EventsListPage.jsx): `bg-surface border border-line rounded-lg`, padding 16, no shadow, no hover lift. Spacing inside: 8 between related lines, 12 between groups. Title uses .t-h3 (2 lines max); description .t-body (2 lines max); meta .t-caption text-ink-2. Image area 16:9, rounded-md. Keep the current structure and ordering and all data-testids; if the inset image would need more than class-level edits, keep the full-bleed image and apply only the tokens, radius and spacing, and tell me what you kept. Register button pinned to the card bottom so all cards align. Image-overlay icon buttons (share, save) become solid: `bg-surface border border-line text-ink`, hover `bg-raised`, saved state `bg-selected text-on-selected` (no blur, no translucency, no orange). Remove every gradient scrim over images; if text sits on an image, move it into a solid bg-surface block beside or below the image. Do NOT change how the image src is chosen.
+Event cards (EventCard, CompactEventCard, and the RelatedEventCard in EventDetail.jsx and EventsListPage.jsx): `bg-surface border border-line rounded-lg`, padding 16, no shadow, no hover lift. Spacing inside: 8 between related lines, 12 between groups. Title uses .t-h3 (2 lines max); description .t-body (2 lines max); meta .t-caption text-ink-2. Image area 16:9, rounded-md. Keep the current structure and ordering and all data-testids; if the inset image would need more than class-level edits, keep the full-bleed image and apply only the tokens, radius and spacing, and tell me what you kept. Register button pinned to the card bottom so all cards align. Image-overlay icon buttons (share, save) become solid: `bg-surface border border-line text-ink`, hover `bg-raised`, saved state `bg-selected text-on-selected` (no blur, no translucency, no orange). Remove every gradient scrim over images; if text sits on an image, move it into a solid bg-surface block beside or below the image.
 
 Chips, badges, tabs. Category chip: rounded-full, h-9, px-4, `bg-chip text-ink` (dark: text-ink-2); selected chip or tab: `bg-selected text-on-selected` (keep the existing framer-motion sliding indicator, recolored). ui/tabs: list `bg-raised rounded-full p-1 h-auto`, trigger `rounded-full px-4 min-h-9 text-ink-2 data-[state=active]:bg-selected data-[state=active]:text-on-selected`; delete the per-usage orange overrides. Neutral badge: rounded-full, h-6, px-2, .t-caption weight 500, bg-chip (category, mode, price). Urgent badge: bg-cta text-on-cta, max one per card, for "Closing soon" only. Status badges always show icon plus word: Pending (Clock, bg-raised text-ink), Approved (Check, bg-ok-bg text-ok), Rejected (X, bg-danger-bg text-danger).
 

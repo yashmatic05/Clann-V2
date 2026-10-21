@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import Navbar from "@/components/Navbar";
 import BottomTabBar from "@/components/BottomTabBar";
-import { assignEventImages, eventImageHandlers } from "@/lib/image-fallback";
+import EventImage from "@/components/EventImage";
 import { ChevronLeft, ChevronRight, CalendarDays, ExternalLink } from "lucide-react";
 
 const monthName = (m) => new Date(2020, m, 1).toLocaleString("en-US", { month: "long" });
@@ -60,11 +60,6 @@ const CalendarPage = () => {
   const selectedEvents = useMemo(
     () => (selectedDate ? (eventsByDate[selectedDate] || []) : []),
     [selectedDate, eventsByDate],
-  );
-  // Display-only image assignment for the day's event thumbnails.
-  const { map: imageMap, used: usedImages } = useMemo(
-    () => assignEventImages(selectedEvents),
-    [selectedEvents],
   );
 
   return (
@@ -150,7 +145,7 @@ const CalendarPage = () => {
                     data-testid={`cal-event-${ev.event_id}`}
                     className="flex items-center gap-3 bg-surface border border-line hover:border-line-input rounded-lg p-3 transition-colors duration-fast ease-standard group"
                   >
-                    <img {...eventImageHandlers(ev, usedImages, imageMap.get(ev.event_id))} alt="" className="h-12 w-12 rounded-md object-cover"/>
+                    <EventImage event={ev} size="sm" className="h-12 w-12 rounded-md shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="t-body-strong text-ink truncate">{ev.title}</p>
                       <p className="t-caption text-ink-muted">{ev.start_time} – {ev.end_time} · {ev.location}</p>

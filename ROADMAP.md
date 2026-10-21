@@ -6,7 +6,10 @@
 - Event browsing, search (including partial Clan ID prefix matching), save, register, calendar view
 - Admin event CRUD, Excel bulk import (image_url optional; only title/external_link/event_date required)
 - Public organizer submission workflow at `/organizer`: submit → pending → admin approves (creates a real event) or rejects (optional reason) → organizer can track status by submission ID + email
-- Image system: real images preferred, stock only as a deduped, landscape-validated fallback — never the primary source
+- Image system: **real images only**. `<EventImage>` shows the event's own image (landscape fills the frame, portrait/square shown whole) or a flat category placeholder. The 8-URL stock pool, the duplicate-swap rule and the sub-1.2-ratio swap rule were all removed — a stock photo is never displayed anywhere.
+- Admin Image Finder (`POST /api/admin/fetch-image`, suggest-only; human approval required): finds a real poster on the event's own registration page, refuses the site's own default logo/banner, flags probable repeats across events, flags low-resolution / banner-strip images, previews fail safely, can fill a spreadsheet before import, and can remove an image that is shared by several events.
+- Event expiry in India time (Asia/Kolkata) for the public list and the Image Finder; expired events are never offered for image work.
+- Hero banner: real, upcoming, genuinely wide event images only (>=800px, >=1.5 ratio); it renders nothing when none qualify instead of showing a placeholder or a stock photo.
 - WhatsApp reminder toggle (stores preference only — no outbound messages are actually sent yet)
 - Category pill filter (in-place filtering on Home)
 - Keep-alive workflow + `/api/health` endpoint preventing Render cold starts
@@ -20,6 +23,9 @@ These were written and merged in earlier sessions but have NOT been independentl
 - Real email confirmations to organizers — requires a transactional email provider (SendGrid/Resend/AWS SES) with an API key; no infrastructure for this exists. Do not add UI copy implying emails are sent until this is actually built.
 - AI-generated event poster fallback — requires an image-generation API integration and ongoing cost; deferred pending a decision on budget/provider.
 - Automatic web-wide event scraping (crawling external sites for events without organizer submission) — raises real legal/ToS questions around scraping and image hotlinking at scale; needs legal review before any engineering investment. Current event collection is human-guided (manual research + admin/Excel import), not autonomous.
+- Automatic image search across the wider web (beyond the event's own registration page) — the Image Finder deliberately reads only the event's own page; a search-engine or third-party image-search integration is not built.
+- Per-event link previews inside the admin panel (a live card preview of the event page) — not built; the Image Finder shows the candidate image itself and the page URL.
+
 - Real WhatsApp message sending (Twilio integration) — preference is stored, no send logic exists.
 - Image upload via object storage — locked decision to stay URL-only for now per the original PRD; revisit only after explicit re-discussion, not silently.
 
