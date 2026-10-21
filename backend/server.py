@@ -5,7 +5,11 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import re
+import json
+import asyncio
 import secrets
+import socket
+import ipaddress
 import string
 import logging
 import uuid
@@ -13,6 +17,8 @@ import httpx
 import jwt
 import bcrypt
 from pathlib import Path
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlsplit
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
@@ -162,6 +168,9 @@ class OrganizerSubmissionCreate(BaseModel):
 
 class SubmissionReject(BaseModel):
     reason: Optional[str] = ""
+
+class ImageLookupRequest(BaseModel):
+    url: str
 
 # -----------------------------
 # Helpers
@@ -621,6 +630,372 @@ async def backfill_event_ids(_=Depends(require_admin)):
         updated += 1
 
     return {"updated_count": updated, "total_missing": len(missing_docs)}
+
+# -----------------------------
+# Admin image lookup (poster finder for the "Image Finder" tool)
+# -----------------------------
+# Suggestion-only helper: given an event's OWN registration-page URL, look for
+# a real poster image the page itself publishes (og:image / twitter:image /
+# schema.org Event JSON-LD / <link rel="image_src">), verify each candidate is
+# actually a reachable image, and return it for human approval. This NEVER
+# writes to the database — approving goes through the normal
+# PUT /events/{event_id} flow — and it NEVER invents, guesses or substitutes a
+# stock/AI image: if the page has no poster, the answer is an honest reason.
+
+IMAGE_LOOKUP_LOGIN_GATED_HOSTS = (
+    "instagram.com",
+    "facebook.com",
+    "fb.com",
+    "linkedin.com",
+    "x.com",
+    "twitter.com",
+)
+IMAGE_LOOKUP_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+)
+IMAGE_LOOKUP_PAGE_TIMEOUT = 8.0      # total timeout for opening the page
+IMAGE_LOOKUP_IMAGE_TIMEOUT = 5.0     # per candidate verification
+IMAGE_LOOKUP_MAX_PAGE_BYTES = 1_500_000  # read at most 1.5 MB of page HTML
+IMAGE_LOOKUP_MAX_HOPS = 3            # redirects followed manually
+IMAGE_LOOKUP_MAX_CANDIDATES = 4      # candidate image URLs verified at most
+IMAGE_LOOKUP_DEMOTE_MARKERS = ("logo", "favicon", "sprite", "placeholder", "default")
+
+
+def _image_lookup_host_gated(hostname: str) -> bool:
+    """Instagram/Facebook/LinkedIn/X pages hide their content behind a login —
+    a fetch would only ever see the login wall, never the event poster."""
+    host = (hostname or "").lower().rstrip(".")
+    return any(
+        host == gated or host.endswith("." + gated)
+        for gated in IMAGE_LOOKUP_LOGIN_GATED_HOSTS
+    )
+
+
+def _image_lookup_blocked_ip(ip_str: str) -> bool:
+    """SSRF guard: True when an address must never be fetched from. Covers
+    loopback, private (incl. 10/8 and 192.168/16), link-local (incl. the cloud
+    metadata IP 169.254.169.254), multicast, reserved and unspecified ranges
+    for IPv4 and IPv6; also unwraps v4-mapped and 6to4 IPv6 addresses."""
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True  # unparseable -> treat as blocked
+    if isinstance(ip, ipaddress.IPv6Address):
+        mapped = getattr(ip, "ipv4_mapped", None)
+        if mapped is not None:
+            return _image_lookup_blocked_ip(str(mapped))
+        sixtofour = getattr(ip, "sixtofour", None)
+        if sixtofour is not None:
+            return _image_lookup_blocked_ip(str(sixtofour))
+    return bool(
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+async def _image_lookup_host_is_public(hostname: str, port: int):
+    """Resolve the hostname and require EVERY returned address to be public.
+
+    Returns (ok, reason). Known limitation: httpx performs its own resolution
+    when it connects, so the validated IP cannot be pinned to the actual
+    socket — a DNS-rebinding race is theoretically possible. This endpoint is
+    admin-only, which is why that residual risk is accepted and documented.
+    """
+    try:
+        infos = await asyncio.to_thread(
+            socket.getaddrinfo, hostname, port, 0, socket.SOCK_STREAM
+        )
+    except (socket.gaierror, UnicodeError, OverflowError, OSError):
+        return False, "unreachable"
+    checked = set()
+    for info in infos:
+        ip_str = str(info[4][0]).split("%", 1)[0]
+        if ip_str in checked:
+            continue
+        checked.add(ip_str)
+        if _image_lookup_blocked_ip(ip_str):
+            return False, "blocked_url"
+    if not checked:
+        return False, "unreachable"
+    return True, None
+
+
+async def _image_lookup_get(client, url: str, *, want: str) -> dict:
+    """GET with redirects followed MANUALLY (max 3 hops), re-validating the
+    scheme and the SSRF rules at every hop. `want` is "html" (read at most
+    1.5 MB of the body) or "image" (status + content-type only — the body is
+    never read).
+
+    Returns {ok, final_url, reason, body}.
+    """
+    current = (url or "").strip()
+    for hop in range(IMAGE_LOOKUP_MAX_HOPS + 1):
+        try:
+            parts = urlsplit(current)
+            scheme = (parts.scheme or "").lower()
+            hostname = parts.hostname
+            port = parts.port or (443 if scheme == "https" else 80)
+        except ValueError:
+            return {"ok": False, "final_url": current, "reason": "blocked_url", "body": None}
+        if scheme not in ("http", "https") or not hostname:
+            return {"ok": False, "final_url": current, "reason": "blocked_url", "body": None}
+        ok, reason = await _image_lookup_host_is_public(hostname, port)
+        if not ok:
+            return {"ok": False, "final_url": current, "reason": reason, "body": None}
+        headers = {"User-Agent": IMAGE_LOOKUP_UA}
+        if want == "html":
+            headers["Accept"] = "text/html"
+        try:
+            async with client.stream("GET", current, headers=headers) as resp:
+                status = resp.status_code
+                ctype = str(resp.headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+                if status in (301, 302, 303, 307, 308):
+                    location = resp.headers.get("location")
+                    if not location or hop >= IMAGE_LOOKUP_MAX_HOPS:
+                        return {"ok": False, "final_url": current, "reason": "http_error", "body": None}
+                    current = urljoin(current, str(location).strip())
+                    continue
+                if status != 200:
+                    return {"ok": False, "final_url": current, "reason": "http_error", "body": None}
+                if want == "image":
+                    # Headers only: exit the stream context without reading the body.
+                    return {"ok": ctype.startswith("image/"), "final_url": current, "reason": None, "body": None}
+                if "html" not in ctype:
+                    return {"ok": False, "final_url": current, "reason": "not_html", "body": None}
+                buf = bytearray()
+                async for chunk in resp.aiter_bytes():
+                    buf.extend(chunk)
+                    if len(buf) >= IMAGE_LOOKUP_MAX_PAGE_BYTES:
+                        break
+                encoding = getattr(resp, "encoding", None) or "utf-8"
+                try:
+                    body = bytes(buf).decode(encoding, errors="replace")
+                except LookupError:
+                    body = bytes(buf).decode("utf-8", errors="replace")
+                return {"ok": True, "final_url": current, "reason": None, "body": body}
+        except httpx.TimeoutException:
+            return {"ok": False, "final_url": current, "reason": "timeout", "body": None}
+        except (httpx.HTTPError, OSError, UnicodeError):
+            return {"ok": False, "final_url": current, "reason": "unreachable", "body": None}
+    return {"ok": False, "final_url": current, "reason": "http_error", "body": None}
+
+
+class _ImageLookupPageParser(HTMLParser):
+    """Collects image signals with the stdlib parser only: og:/twitter: meta
+    tags (either `property` or `name`, `content` in any attribute order),
+    <link rel="image_src">, and JSON-LD script bodies."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.metas = {}
+        self.image_srcs = []
+        self.jsonld = []
+        self._in_ld = False
+        self._ld_buf = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in ("meta", "link", "script"):
+            return
+        found = {}
+        for key, value in attrs:
+            if value is not None:
+                found[key.lower()] = value
+        if tag == "meta":
+            name = (found.get("property") or found.get("name") or "").strip().lower()
+            content = found.get("content")
+            if name and content and name not in self.metas:
+                self.metas[name] = content.strip()
+        elif tag == "link":
+            rel_tokens = (found.get("rel") or "").strip().lower().split()
+            href = (found.get("href") or "").strip()
+            if href and "image_src" in rel_tokens:
+                self.image_srcs.append(href)
+        elif tag == "script":
+            if (found.get("type") or "").strip().lower() == "application/ld+json":
+                self._in_ld = True
+                self._ld_buf = []
+
+    def handle_data(self, data):
+        if self._in_ld:
+            self._ld_buf.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == "script" and self._in_ld:
+            if self._ld_buf:
+                self.jsonld.append("".join(self._ld_buf))
+            self._in_ld = False
+            self._ld_buf = []
+
+
+def _image_lookup_jsonld_images(blobs) -> list:
+    """`image` values of schema.org Event objects inside JSON-LD blocks.
+
+    Handles top-level objects/arrays, `@graph` graphs, `@type` as string or
+    list (also in full URL form like "https://schema.org/Event"), and `image`
+    as a string, a list of strings/objects, or an object with `url`.
+    """
+    images = []
+
+    def add(value):
+        if isinstance(value, str):
+            text = value.strip()
+            if text:
+                images.append(text)
+        elif isinstance(value, list):
+            for item in value:
+                add(item)
+        elif isinstance(value, dict):
+            add(value.get("url"))
+
+    def visit(node):
+        if isinstance(node, list):
+            for item in node:
+                visit(item)
+            return
+        if not isinstance(node, dict):
+            return
+        raw_type = node.get("@type")
+        type_items = raw_type if isinstance(raw_type, list) else [raw_type]
+        for item in type_items:
+            if item is None:
+                continue
+            name = str(item).strip().rsplit("/", 1)[-1].rsplit("#", 1)[-1].lower()
+            if name == "event" and "image" in node:
+                add(node.get("image"))
+                break
+        for value in node.values():
+            if isinstance(value, (dict, list)):
+                visit(value)
+
+    for blob in blobs:
+        try:
+            data = json.loads(blob)
+        except (ValueError, TypeError):
+            continue
+        visit(data)
+    return images
+
+
+def _image_lookup_demote(url: str) -> bool:
+    """Site icons and animation placeholders are never posters — but they are
+    not dropped either; they are moved to the END of the candidate list."""
+    try:
+        path = urlsplit(url).path.lower()
+    except ValueError:
+        path = url.lower()
+    if any(marker in path for marker in IMAGE_LOOKUP_DEMOTE_MARKERS):
+        return True
+    return path.endswith((".svg", ".ico", ".gif"))
+
+
+def _image_lookup_candidates(html: str, final_url: str) -> list:
+    """Ordered, de-duplicated candidates as (resolved_url, source) pairs."""
+    parser = _ImageLookupPageParser()
+    try:
+        parser.feed(html or "")
+        parser.close()
+    except Exception:
+        pass  # a truncated/odd page still yields whatever parsed cleanly
+
+    ordered = []
+    seen = set()
+
+    def push(raw, source):
+        if not raw:
+            return
+        resolved = urljoin(final_url, str(raw).strip())
+        if not resolved.lower().startswith(("http://", "https://")):
+            return
+        if resolved in seen:
+            return
+        seen.add(resolved)
+        ordered.append((resolved, source))
+
+    push(parser.metas.get("og:image:secure_url"), "og:image")
+    push(parser.metas.get("og:image"), "og:image")
+    push(parser.metas.get("twitter:image"), "twitter:image")
+    push(parser.metas.get("twitter:image:src"), "twitter:image")
+    for value in _image_lookup_jsonld_images(parser.jsonld):
+        push(value, "json-ld")
+    for value in parser.image_srcs:
+        push(value, "image_src")
+
+    keep = [item for item in ordered if not _image_lookup_demote(item[0])]
+    demoted = [item for item in ordered if _image_lookup_demote(item[0])]
+    return keep + demoted
+
+
+@api_router.post("/admin/fetch-image")
+async def admin_fetch_image(payload: ImageLookupRequest, _=Depends(require_admin)):
+    """Find a real poster image on the event's own registration page.
+
+    SUGGESTS ONLY — nothing is ever written to the database from here.
+    Outcomes are always HTTP 200 with {image_url, alternatives, source,
+    page_url, reason}; 401 is missing admin auth and 422 a malformed body
+    (both handled by FastAPI itself).
+    """
+    url = (payload.url or "").strip()
+
+    def result(image_url=None, alternatives=None, source=None, page_url=url, reason=None):
+        return {
+            "image_url": image_url,
+            "alternatives": alternatives or [],
+            "source": source,
+            "page_url": page_url,
+            "reason": reason,
+        }
+
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return result(reason="blocked_url")
+    host = (parts.hostname or "").lower()
+    if (parts.scheme or "").lower() not in ("http", "https") or not host:
+        return result(reason="blocked_url")
+    if _image_lookup_host_gated(host):
+        return result(reason="login_gated")
+
+    verified = []
+    final_url = url
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(IMAGE_LOOKUP_PAGE_TIMEOUT),
+            follow_redirects=False,
+        ) as page_client, httpx.AsyncClient(
+            timeout=httpx.Timeout(IMAGE_LOOKUP_IMAGE_TIMEOUT),
+            follow_redirects=False,
+        ) as image_client:
+            page = await _image_lookup_get(page_client, url, want="html")
+            if not page["ok"]:
+                return result(page_url=page["final_url"], reason=page["reason"])
+            final_url = page["final_url"]
+            candidates = _image_lookup_candidates(page["body"], final_url)
+            for cand_url, cand_source in candidates[:IMAGE_LOOKUP_MAX_CANDIDATES]:
+                probe = await _image_lookup_get(image_client, cand_url, want="image")
+                if probe["ok"]:
+                    verified.append((cand_url, cand_source))
+    except httpx.TimeoutException:
+        return result(page_url=final_url, reason="timeout")
+    except (httpx.HTTPError, OSError):
+        return result(page_url=final_url, reason="unreachable")
+
+    if not verified:
+        # Nothing published (or nothing reachable) — say so honestly.
+        return result(page_url=final_url, reason="no_image_found")
+
+    first_url, first_source = verified[0]
+    return result(
+        image_url=first_url,
+        alternatives=[cand_url for cand_url, _ in verified],
+        source=first_source,
+        page_url=final_url,
+        reason=None,
+    )
 
 # -----------------------------
 # Homepage Categories
