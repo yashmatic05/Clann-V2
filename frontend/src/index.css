@@ -42,11 +42,17 @@
     --c-ink-muted: 107 90 128;
     --c-ink-disabled: 154 140 173;
 
-    /* accent — the single orange action per card / screen */
-    --c-cta: 248 78 0;
-    --c-cta-hover: 255 106 43;
-    --c-on-cta: 40 0 73;
-    --c-cta-text: 198 62 0;
+    /* accent — the single orange action per card / screen.
+       Brand orange is #FF631B (255 99 27) in BOTH themes. The hover shade
+       keeps the previous 9.8-point HSL lightness lift, re-derived from the
+       new brand orange as #FF824D (255 130 77). --c-on-cta is #FFFFFF so
+       every orange-filled action has a white label. --c-cta-text mirrors the
+       shared brand orange, so links, icons, badges and borders use one orange
+       instead of a theme-specific legacy shade. */
+    --c-cta: 255 99 27;
+    --c-cta-hover: 255 130 77;
+    --c-on-cta: 255 255 255;
+    --c-cta-text: 255 99 27;
 
     /* focus + status */
     --c-focus: 40 0 73;
@@ -83,11 +89,12 @@
     --c-ink-muted: 154 140 173;
     --c-ink-disabled: 107 90 128;
 
-    /* accent */
-    --c-cta: 248 78 0;
-    --c-cta-hover: 255 106 43;
-    --c-on-cta: 40 0 73;
-    --c-cta-text: 248 78 0;
+    /* accent — identical brand orange and white-on-orange label in dark.
+       The hover shade keeps the same derived lightness lift as light mode. */
+    --c-cta: 255 99 27;
+    --c-cta-hover: 255 130 77;
+    --c-on-cta: 255 255 255;
+    --c-cta-text: 255 99 27;
 
     /* focus + status */
     --c-focus: 195 182 210;

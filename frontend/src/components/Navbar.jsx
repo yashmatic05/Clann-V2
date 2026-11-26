@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Bell, Calendar, Search as SearchIcon } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import ThemedLogo from "@/components/ThemedLogo";
@@ -19,6 +19,10 @@ const NAVBAR_SEARCH_PLACEHOLDERS = [
 const Navbar = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  // The header is shared by every page. Only the home route gets the existing
+  // orange Clann wordmark; all other routes keep the theme-aware mark.
+  const { pathname } = useLocation();
+  const isHome = pathname === "/";
   const [searchQuery, setSearchQuery] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [displayText, setDisplayText] = useState("");
@@ -124,9 +128,21 @@ const Navbar = () => {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-canvas" data-testid="top-navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-3">
-        {/* LEFT — brand logo */}
+        {/* LEFT — brand logo. Home uses the existing orange PNG; every other
+            route keeps ThemedLogo. The <img> keeps the original h-9 w-auto box
+            and 864/492 aspect ratio, the "/" destination, the brand-logo test id
+            and the "Clann" accessible name. */}
         <Link to="/" data-testid="brand-logo" className="flex items-center shrink-0">
-          <ThemedLogo className="h-9 w-auto shrink-0" />
+          {isHome ? (
+            <img
+              src="/brand/clann-logo-color.png"
+              alt="Clann"
+              className="h-9 w-auto shrink-0"
+              style={{ aspectRatio: "864 / 492", objectFit: "contain" }}
+            />
+          ) : (
+            <ThemedLogo className="h-9 w-auto shrink-0" />
+          )}
         </Link>
 
         {/* CENTER — desktop search bar (hidden on mobile) */}
