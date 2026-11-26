@@ -14,10 +14,12 @@ api.interceptors.request.use((config) => {
   const adminToken = localStorage.getItem("clann_admin_token");
   if (adminToken && config.url && config.url.startsWith("/")) {
     config.headers = config.headers || {};
-    // Only attach for admin-scoped routes to avoid leaking
+    // Only attach for admin-scoped routes to avoid leaking: reads of /events
+    // carry the token only on admin pages, writes always do.
+    const onAdminPage = window.location.pathname.startsWith("/admin");
     if (config.url.startsWith("/admin") ||
-        (["get", "post", "put", "delete"].includes((config.method || "").toLowerCase()) &&
-         config.url.startsWith("/events"))) {
+        (config.url.startsWith("/events") &&
+         (onAdminPage || ["post", "put", "delete"].includes((config.method || "").toLowerCase())))) {
       config.headers["X-Admin-Token"] = adminToken;
     }
   }
